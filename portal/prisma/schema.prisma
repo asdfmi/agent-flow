@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL") // e.g. file:/tmp/dev.sqlite
+}
+
+model Workflow {
+  id          Int           @id @default(autoincrement())
+  slug        String        @unique
+  title       String
+  description String?
+  startStepId String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  steps       WorkflowStep[]
+  runs        WorkflowRun[]
+}
+
+model WorkflowStep {
+  id            Int           @id @default(autoincrement())
+  workflow      Workflow      @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  workflowId    Int
+  stepKey       String
+  type          WorkflowStepType
+  nextStepKey   String?
+  exitStepKey   String?
+  label         String?
+  config        Json?
+  successConfig Json?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([workflowId])
+  @@unique([workflowId, stepKey])
+}
+
+enum WorkflowStepType {
+  navigate
+  wait
+  scroll
+  click
+  fill
+  press
+  log
+  script
+  extract_text
+  if
+  loop
+}
+
+model WorkflowRun {
+  id           Int               @id @default(autoincrement())
+  workflow     Workflow          @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  workflowId   Int
+  runKey       String            @unique
+  status       WorkflowRunStatus @default(queued)
+  startedAt    DateTime          @default(now())
+  finishedAt   DateTime?
+  errorMessage String?
+  stats        Json?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  metrics      WorkflowRunMetric[]
+
+  @@index([workflowId])
+  @@index([status, startedAt])
+}
+
+model WorkflowRunMetric {
+  id        Int          @id @default(autoincrement())
+  run       WorkflowRun  @relation(fields: [runId], references: [id], onDelete: Cascade)
+  runId     Int
+  key       String
+  value     Json?
+  createdAt DateTime     @default(now())
+
+  @@index([runId, key])
+}
+
+enum WorkflowRunStatus {
+  queued
+  running
+  succeeded
+  failed
+  cancelled
+}

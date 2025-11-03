@@ -1,0 +1,41 @@
+FROM node:22-slim AS deps
+
+WORKDIR /app
+
+RUN apt-get update -y \
+    && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable && corepack prepare pnpm@10.20.0 --activate
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY portal/package.json portal/package.json
+COPY crawler/package.json crawler/package.json
+RUN pnpm install --filter browgent-portal... --frozen-lockfile
+
+FROM deps AS builder
+COPY . .
+WORKDIR /app/portal
+RUN pnpm prisma generate --schema prisma/schema.prisma \
+    && pnpm vite build --config ui/vite.config.js
+
+FROM node:22-slim AS runtime
+
+WORKDIR /app
+
+RUN apt-get update -y \
+    && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV NODE_ENV=production
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable && corepack prepare pnpm@10.20.0 --activate
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY portal/package.json portal/package.json
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/portal ./portal
+
+EXPOSE 3000
+CMD ["pnpm", "run", "start:push"]

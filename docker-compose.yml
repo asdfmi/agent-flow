@@ -1,0 +1,28 @@
+services:
+  portal:
+    image: browgent-portal
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.portal
+    container_name: browgent-portal
+    command: ["pnpm", "run", "start:push"]
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local
+    environment:
+      NODE_ENV: production
+      CRAWLER_BASE_URL: http://crawler:4000
+
+  crawler:
+    image: browgent-crawler
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.crawler
+    container_name: browgent-crawler
+    command: ["node", "index.js"]
+    env_file:
+      - .env.local
+    environment:
+      PORTAL_BASE_URL: http://portal:3000
+      MAX_CONCURRENCY: "4"
