@@ -1,19 +1,20 @@
-import express from "express";
+import "dotenv/config";
+import http from "http";
 import path from "path";
+import express from "express";
 import { fileURLToPath } from "url";
 import workflowsRouter from "./routes/workflows.js";
 import internalRouter from "./routes/internal.js";
 import prisma from "./lib/prisma.js";
-import http from "http";
 import { initWs } from "./ws/index.js";
 
 const moduleFile = fileURLToPath(import.meta.url);
 const apiDir = path.dirname(moduleFile);
 const repoRoot = path.resolve(apiDir, "..", "..");
 
-const clientDistDir = path.join(repoRoot, "app", "ui", "dist");
+const clientDistDir = path.join(repoRoot, "portal", "ui", "dist");
 const workflowsHtmlPath = path.join(clientDistDir, "src", "pages", "workflows", "index.html");
-const workflowHtmlPath = path.join(clientDistDir, "src", "pages", "workflow", "index.html");
+const workflowBuilderHtmlPath = path.join(clientDistDir, "src", "pages", "workflow-builder", "index.html");
 const app = express();
 const port = 3000;
 
@@ -29,13 +30,17 @@ app.get(["/", "/workflows"], (_req, res) => {
   res.sendFile(workflowsHtmlPath);
 });
 app.get("/workflow/:workflowId", (_req, res) => {
-  res.sendFile(workflowHtmlPath);
+  res.sendFile(workflowBuilderHtmlPath);
 });
 
 // ===== API =====
 
 app.use("/api/workflows", workflowsRouter);
 app.use("/internal", internalRouter);
+
+app.get("/healthz", (_req, res) => {
+  res.json({ ok: true });
+});
 
 const server = http.createServer(app);
 initWs(server);

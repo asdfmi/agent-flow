@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   CircularProgress,
@@ -14,6 +14,8 @@ const initialState = { loading: true, data: [], error: "" };
 
 export default function WorkflowsPage() {
   const [state, setState] = useState(initialState);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -48,15 +50,57 @@ export default function WorkflowsPage() {
     );
   }
 
+  const handleCreate = useCallback(async () => {
+    setCreating(true);
+    setCreateError("");
+    try {
+      const res = await fetch("/api/workflows/draft", { method: "POST" });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload.error || "Failed to create draft workflow");
+      }
+      const payload = await res.json();
+      const id = payload?.data?.id;
+      if (id) {
+        window.location.href = `/workflow/${id}`;
+        return;
+      }
+      throw new Error("draft workflow id missing");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      setCreateError(message);
+    } finally {
+      setCreating(false);
+    }
+  }, []);
+
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
       <Paper sx={{ p: 3 }}>
         <Stack spacing={2}>
-          <Typography variant="h5">Workflows</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Select a workflow to view details and run the automation.
-          </Typography>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={2}
+            justifyContent="space-between"
+            alignItems={{ xs: "flex-start", sm: "center" }}
+          >
+            <Stack spacing={0.5}>
+              <Typography variant="h5">Workflows</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Select a workflow to view details and run the automation.
+              </Typography>
+            </Stack>
+            <Button
+              variant="contained"
+              onClick={handleCreate}
+              disabled={creating}
+              sx={{ alignSelf: { xs: "stretch", sm: "center" } }}
+            >
+              {creating ? "Creating..." : "Create workflow"}
+            </Button>
+          </Stack>
           {state.error ? <Alert severity="error">{state.error}</Alert> : null}
+          {createError ? <Alert severity="error">{createError}</Alert> : null}
           <Divider />
           {state.data.length === 0 ? (
             <Typography variant="body2" color="text.secondary">

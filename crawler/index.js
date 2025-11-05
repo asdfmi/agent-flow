@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import { WorkflowRunner } from './src/engine/workflow-runner.js';
 import { postEvent } from './src/events.js';

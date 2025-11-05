@@ -13,7 +13,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         workflows: path.resolve(appDir, "src", "pages", "workflows", "index.html"),
-        workflow: path.resolve(appDir, "src", "pages", "workflow", "index.html"),
+        workflowBuilder: path.resolve(appDir, "src", "pages", "workflow-builder", "index.html"),
       },
     },
   },

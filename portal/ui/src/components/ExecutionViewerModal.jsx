@@ -166,3 +166,11 @@ ExecutionViewerModal.propTypes = {
   ),
   currentStepIndex: PropTypes.number,
 };
+
+ExecutionViewerModal.defaultProps = {
+  screenshot: "",
+  eventLog: [],
+  wsStatus: "idle",
+  steps: [],
+  currentStepIndex: null,
+};

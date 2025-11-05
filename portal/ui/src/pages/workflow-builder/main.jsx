@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { ThemeProvider, CssBaseline, createTheme } from "@mui/material";
-import WorkflowApp from "./App.jsx";
+import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
+import WorkflowBuilderApp from "./App.jsx";
 
 const container = document.getElementById("root");
 
@@ -10,7 +10,7 @@ if (container) {
     <StrictMode>
       <ThemeProvider theme={createTheme()}>
         <CssBaseline />
-        <WorkflowApp />
+        <WorkflowBuilderApp />
       </ThemeProvider>
     </StrictMode>
   );

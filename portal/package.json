@@ -12,12 +12,17 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "prop-types": "^15.8.1",
+    "dotenv": "^16.4.5",
     "ws": "^8.18.3"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.0",
     "prisma": "^6.18.0",
     "vite": "npm:rolldown-vite@7.1.20"
+  },
+  "scripts": {
+    "dev:api": "tsx watch server/index.js",
+    "dev:ui": "vite build --watch --mode development --config ui/vite.config.js"
   },
   "packageManager": "pnpm@10.20.0"
 }

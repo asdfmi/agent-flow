@@ -9,7 +9,10 @@
   ],
   "scripts": {
     "lint": "eslint .",
-    "start:push": "pnpm --dir portal exec prisma db push --schema prisma/schema.prisma && node portal/server/index.js"
+    "dev:portal": "pnpm --dir portal run dev:api",
+    "dev:portal:ui": "pnpm --dir portal run dev:ui",
+    "dev:crawler": "pnpm --dir crawler run dev:runner",
+    "dev": "concurrently \"pnpm run dev:portal:ui\" \"pnpm run dev:portal\" \"pnpm run dev:crawler\""
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -17,7 +20,9 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^16.5.0"
+    "globals": "^16.5.0",
+    "concurrently": "^9.1.0",
+    "tsx": "^4.19.1"
   },
   "packageManager": "pnpm@10.20.0"
 }
