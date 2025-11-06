@@ -4,7 +4,7 @@ import prisma from "../lib/prisma.js";
 
 const router = Router();
 
-const STEP_TYPES = new Set([
+const NODE_TYPES = new Set([
   "navigate",
   "wait",
   "scroll",
@@ -14,9 +14,12 @@ const STEP_TYPES = new Set([
   "log",
   "script",
   "extract_text",
-  "if",
-  "loop",
 ]);
+
+const WORKFLOW_INCLUDE = {
+  nodes: { orderBy: { id: "asc" } },
+  edges: { orderBy: { id: "asc" } },
+};
 
 router.get("/", async (_req, res) => {
   try {
@@ -60,12 +63,15 @@ router.post("/", async (req, res) => {
         slug: value.slug,
         title: value.title,
         description: value.description,
-        startStepId: value.startStepId,
-        steps: {
-          create: value.steps.map(toStepCreateInput),
+        startNodeId: value.startNodeId,
+        nodes: {
+          create: value.nodes.map(toNodeCreateInput),
+        },
+        edges: {
+          create: value.edges.map(toEdgeCreateInput),
         },
       },
-      include: { steps: { orderBy: { id: "asc" } } },
+      include: WORKFLOW_INCLUDE,
     });
     return res.status(201).json({ data: workflow });
   } catch (error) {
@@ -77,29 +83,37 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.get("/:id", async (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) {
-    return res.status(400).json({ error: "invalid_workflow_id" });
+async function resolveWorkflow(identifier, { include } = {}) {
+  if (!identifier) return null;
+  const numeric = Number(identifier);
+  if (Number.isInteger(numeric) && numeric > 0) {
+    const workflow = await prisma.workflow.findUnique({ where: { id: numeric }, include });
+    return workflow ? { workflow, id: numeric } : null;
   }
+  const slug = String(identifier || "").trim();
+  if (!slug) return null;
+  const workflow = await prisma.workflow.findUnique({ where: { slug }, include });
+  return workflow ? { workflow, id: workflow.id } : null;
+}
+
+router.get("/:identifier", async (req, res) => {
+  const { identifier } = req.params;
   try {
-    const workflow = await prisma.workflow.findUnique({
-      where: { id },
-      include: { steps: { orderBy: { id: "asc" } } },
+    const resolved = await resolveWorkflow(identifier, {
+      include: WORKFLOW_INCLUDE,
     });
-    if (!workflow) return res.status(404).json({ error: "workflow_not_found" });
-    res.json({ data: workflow });
+    if (!resolved) {
+      return res.status(404).json({ error: "workflow_not_found" });
+    }
+    res.json({ data: resolved.workflow });
   } catch (error) {
     console.error("Failed to fetch workflow", error);
     res.status(500).json({ error: "failed_to_fetch_workflow" });
   }
 });
 
-router.put("/:id", async (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) {
-    return res.status(400).json({ error: "invalid_workflow_id" });
-  }
+router.put("/:identifier", async (req, res) => {
+  const { identifier } = req.params;
 
   const { value, errors } = normalizeWorkflowInput(req.body);
   if (errors.length > 0) {
@@ -107,11 +121,14 @@ router.put("/:id", async (req, res) => {
   }
 
   try {
+    const resolved = await resolveWorkflow(identifier);
+    if (!resolved) {
+      return res.status(404).json({ error: "workflow_not_found" });
+    }
+    const id = resolved.id;
     const workflow = await prisma.$transaction(async (tx) => {
-      const existing = await tx.workflow.findUnique({ where: { id }, select: { id: true } });
-      if (!existing) return null;
-
-      await tx.workflowStep.deleteMany({ where: { workflowId: id } });
+      await tx.workflowEdge.deleteMany({ where: { workflowId: id } });
+      await tx.workflowNode.deleteMany({ where: { workflowId: id } });
 
       return tx.workflow.update({
         where: { id },
@@ -119,12 +136,15 @@ router.put("/:id", async (req, res) => {
           slug: value.slug,
           title: value.title,
           description: value.description,
-          startStepId: value.startStepId,
-          steps: {
-            create: value.steps.map(toStepCreateInput),
+          startNodeId: value.startNodeId,
+          nodes: {
+            create: value.nodes.map(toNodeCreateInput),
+          },
+          edges: {
+            create: value.edges.map(toEdgeCreateInput),
           },
         },
-        include: { steps: { orderBy: { id: "asc" } } },
+        include: WORKFLOW_INCLUDE,
       });
     });
 
@@ -142,19 +162,44 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-router.post("/:id/run", async (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) {
-    return res.status(400).json({ error: "invalid_workflow_id" });
-  }
-  try {
-    const workflow = await prisma.workflow.findUnique({
-      where: { id },
-      include: { steps: { orderBy: { id: "asc" } } },
-    });
-    if (!workflow) return res.status(404).json({ error: "workflow_not_found" });
+router.get("/:identifier/runs", async (req, res) => {
+  const take = Math.min(Number(req.query.take) || 20, 100);
 
-    const workflowPayload = toWorkflowPayload(workflow);
+  try {
+    const resolved = await resolveWorkflow(req.params.identifier);
+    if (!resolved) {
+      return res.status(404).json({ error: "workflow_not_found" });
+    }
+    const runs = await prisma.workflowRun.findMany({
+      where: { workflowId: resolved.id },
+      orderBy: { startedAt: "desc" },
+      take,
+      select: {
+        id: true,
+        runKey: true,
+        status: true,
+        startedAt: true,
+        finishedAt: true,
+        errorMessage: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+    res.json({ data: runs });
+  } catch (error) {
+    console.error("Failed to list workflow runs", error);
+    res.status(500).json({ error: "failed_to_list_runs" });
+  }
+});
+
+router.post("/:identifier/run", async (req, res) => {
+  try {
+    const resolved = await resolveWorkflow(req.params.identifier, {
+      include: WORKFLOW_INCLUDE,
+    });
+    if (!resolved) return res.status(404).json({ error: "workflow_not_found" });
+
+    const workflowPayload = toWorkflowPayload(resolved.workflow);
     const runId = randomUUID();
     const base = process.env.CRAWLER_BASE_URL;
     if (!base) {
@@ -209,88 +254,196 @@ function normalizeWorkflowInput(body) {
         ? body.description.trim() || null
         : null;
 
-  const startStepId =
-    typeof body.startStepId === "string" ? body.startStepId.trim() || null : null;
+  const startNodeId =
+    typeof body.startNodeId === "string" ? body.startNodeId.trim() || null : null;
 
-  const stepsInput = Array.isArray(body.steps) ? body.steps : [];
-  if (!Array.isArray(body.steps)) {
-    errors.push("steps must be an array");
+  const nodesInput = Array.isArray(body.nodes) ? body.nodes : [];
+  if (!Array.isArray(body.nodes)) {
+    errors.push("nodes must be an array");
   }
 
-  const steps = [];
-  const seenStepKeys = new Set();
+  const nodes = [];
+  const seenNodeKeys = new Set();
 
-  for (let index = 0; index < stepsInput.length; index += 1) {
-    const rawStep = stepsInput[index];
-    const prefix = `steps[${index}]`;
-    if (!isRecord(rawStep)) {
+  for (let index = 0; index < nodesInput.length; index += 1) {
+    const rawNode = nodesInput[index];
+    const prefix = `nodes[${index}]`;
+    if (!isRecord(rawNode)) {
       errors.push(`${prefix} must be an object`);
       continue;
     }
 
-    const stepKey = typeof rawStep.stepKey === "string" ? rawStep.stepKey.trim() : "";
-    if (!stepKey) {
-      errors.push(`${prefix}.stepKey is required`);
+    const nodeKey = typeof rawNode.nodeKey === "string" ? rawNode.nodeKey.trim() : "";
+    if (!nodeKey) {
+      errors.push(`${prefix}.nodeKey is required`);
       continue;
     }
-    if (seenStepKeys.has(stepKey)) {
-      errors.push(`${prefix}.stepKey duplicates an existing step`);
+    if (seenNodeKeys.has(nodeKey)) {
+      errors.push(`${prefix}.nodeKey duplicates an existing node`);
       continue;
     }
-    seenStepKeys.add(stepKey);
+    seenNodeKeys.add(nodeKey);
 
-    const type = typeof rawStep.type === "string" ? rawStep.type.trim() : "";
-    if (!STEP_TYPES.has(type)) {
+    const type = typeof rawNode.type === "string" ? rawNode.type.trim() : "";
+    if (!NODE_TYPES.has(type)) {
       errors.push(`${prefix}.type is invalid`);
       continue;
     }
 
     const label =
-      typeof rawStep.label === "string" ? rawStep.label.trim() || null : null;
-    const nextStepKey =
-      typeof rawStep.nextStepKey === "string"
-        ? rawStep.nextStepKey.trim() || null
-        : null;
-    const exitStepKey =
-      typeof rawStep.exitStepKey === "string"
-        ? rawStep.exitStepKey.trim() || null
-        : null;
+      typeof rawNode.label === "string" ? rawNode.label.trim() || null : null;
 
-    let config = null;
-    if (typeof rawStep.config !== "undefined") {
-      if (rawStep.config === null || typeof rawStep.config === "object") {
-        config = rawStep.config;
+    let config;
+    if (Object.prototype.hasOwnProperty.call(rawNode, "config")) {
+      if (rawNode.config === null || typeof rawNode.config === "object") {
+        config = rawNode.config;
       } else {
         errors.push(`${prefix}.config must be an object when provided`);
         continue;
       }
     }
 
-    let successConfig = null;
-    if (typeof rawStep.successConfig !== "undefined") {
-      if (isRecord(rawStep.successConfig)) {
-        successConfig = rawStep.successConfig;
-      } else if (rawStep.successConfig === null) {
-        successConfig = null;
+    let successConfig;
+    if (Object.prototype.hasOwnProperty.call(rawNode, "successConfig")) {
+      if (rawNode.successConfig === null || typeof rawNode.successConfig === "object") {
+        successConfig = rawNode.successConfig;
       } else {
         errors.push(`${prefix}.successConfig must be an object when provided`);
         continue;
       }
     }
 
-    steps.push({
-      stepKey,
+    nodes.push({
+      nodeKey,
       type,
       label,
-      nextStepKey,
-      exitStepKey,
-      config,
-      successConfig,
+      ...(typeof config !== "undefined" ? { config } : {}),
+      ...(typeof successConfig !== "undefined" ? { successConfig } : {}),
     });
   }
 
-  if (startStepId && !seenStepKeys.has(startStepId)) {
-    errors.push("startStepId must reference a stepKey defined in steps");
+  if (nodes.length === 0) {
+    errors.push("at least one node is required");
+  }
+
+  if (startNodeId && !seenNodeKeys.has(startNodeId)) {
+    errors.push("startNodeId must reference a nodeKey defined in nodes");
+  }
+
+  const edgesInput = Array.isArray(body.edges) ? body.edges : [];
+  if (!Array.isArray(body.edges)) {
+    errors.push("edges must be an array");
+  }
+
+  const edges = [];
+  const seenEdgeKeys = new Set();
+
+  for (let index = 0; index < edgesInput.length; index += 1) {
+    const rawEdge = edgesInput[index];
+    const prefix = `edges[${index}]`;
+    if (!isRecord(rawEdge)) {
+      errors.push(`${prefix} must be an object`);
+      continue;
+    }
+
+    const providedEdgeKey =
+      typeof rawEdge.edgeKey === "string" ? rawEdge.edgeKey.trim() : "";
+    const edgeKey =
+      providedEdgeKey || `edge_${randomUUID().replace(/-/g, "")}`;
+    if (seenEdgeKeys.has(edgeKey)) {
+      errors.push(`${prefix}.edgeKey duplicates an existing edge`);
+      continue;
+    }
+    seenEdgeKeys.add(edgeKey);
+
+    const sourceKey =
+      typeof rawEdge.source === "string"
+        ? rawEdge.source.trim()
+        : typeof rawEdge.sourceKey === "string"
+          ? rawEdge.sourceKey.trim()
+          : "";
+    if (!sourceKey) {
+      errors.push(`${prefix}.source is required`);
+      continue;
+    }
+
+    const targetKeyRaw =
+      typeof rawEdge.target === "string"
+        ? rawEdge.target.trim()
+        : typeof rawEdge.targetKey === "string"
+          ? rawEdge.targetKey.trim()
+          : "";
+    const targetKey = targetKeyRaw || null;
+
+    const label =
+      typeof rawEdge.label === "string" ? rawEdge.label.trim() || null : null;
+
+    let condition;
+    if (Object.prototype.hasOwnProperty.call(rawEdge, "condition")) {
+      if (rawEdge.condition === null || typeof rawEdge.condition === "object") {
+        condition = rawEdge.condition;
+      } else {
+        errors.push(`${prefix}.condition must be an object when provided`);
+        continue;
+      }
+    }
+
+    let metadata;
+    if (Object.prototype.hasOwnProperty.call(rawEdge, "metadata")) {
+      if (
+        rawEdge.metadata === null ||
+        typeof rawEdge.metadata === "object"
+      ) {
+        metadata = rawEdge.metadata;
+      } else {
+        errors.push(`${prefix}.metadata must be an object when provided`);
+        continue;
+      }
+    }
+
+    let priority;
+    if (Object.prototype.hasOwnProperty.call(rawEdge, "priority")) {
+      if (rawEdge.priority === null) {
+        priority = null;
+      } else {
+        const numeric = Number(rawEdge.priority);
+        if (Number.isFinite(numeric)) {
+          priority = numeric;
+        } else {
+          errors.push(`${prefix}.priority must be a number`);
+          continue;
+        }
+      }
+    } else {
+      priority = index;
+    }
+
+    edges.push({
+      edgeKey,
+      sourceKey,
+      targetKey,
+      label,
+      ...(typeof condition !== "undefined" ? { condition } : {}),
+      ...(typeof metadata !== "undefined" ? { metadata } : {}),
+      ...(typeof priority !== "undefined" ? { priority } : {}),
+    });
+  }
+
+  const nodeKeySet = new Set(nodes.map((node) => node.nodeKey));
+  for (const edge of edges) {
+    if (!nodeKeySet.has(edge.sourceKey)) {
+      errors.push(`edge ${edge.edgeKey} references unknown source node ${edge.sourceKey}`);
+    }
+    if (edge.targetKey && !nodeKeySet.has(edge.targetKey)) {
+      errors.push(`edge ${edge.edgeKey} references unknown target node ${edge.targetKey}`);
+    }
+  }
+
+  const outgoingByNode = new Map();
+  for (const edge of edges) {
+    const list = outgoingByNode.get(edge.sourceKey) ?? [];
+    list.push(edge);
+    outgoingByNode.set(edge.sourceKey, list);
   }
 
   return {
@@ -298,27 +451,47 @@ function normalizeWorkflowInput(body) {
       slug,
       title,
       description,
-      startStepId,
-      steps,
+      startNodeId,
+      nodes,
+      edges,
     },
     errors,
   };
 }
 
-function toStepCreateInput(step) {
+function toNodeCreateInput(node) {
   const data = {
-    stepKey: step.stepKey,
-    type: step.type,
-    label: step.label,
-    nextStepKey: step.nextStepKey,
-    exitStepKey: step.exitStepKey,
+    nodeKey: node.nodeKey,
+    type: node.type,
+    label: node.label,
   };
 
-  if (typeof step.config !== "undefined") {
-    data.config = step.config;
+  if (typeof node.config !== "undefined") {
+    data.config = node.config;
   }
-  if (typeof step.successConfig !== "undefined") {
-    data.successConfig = step.successConfig;
+  if (typeof node.successConfig !== "undefined") {
+    data.successConfig = node.successConfig;
+  }
+
+  return data;
+}
+
+function toEdgeCreateInput(edge) {
+  const data = {
+    edgeKey: edge.edgeKey,
+    sourceKey: edge.sourceKey,
+    targetKey: edge.targetKey,
+    label: edge.label,
+  };
+
+  if (typeof edge.condition !== "undefined") {
+    data.condition = edge.condition;
+  }
+  if (typeof edge.metadata !== "undefined") {
+    data.metadata = edge.metadata;
+  }
+  if (Object.prototype.hasOwnProperty.call(edge, "priority")) {
+    data.priority = edge.priority;
   }
 
   return data;
@@ -327,30 +500,34 @@ function toStepCreateInput(step) {
 function toWorkflowPayload(workflow) {
   const name = workflow.slug || `workflow-${workflow.id}`;
   const description = workflow.description ?? "";
-  const steps = workflow.steps.map((step) => {
-    const cfg = isRecord(step.config) ? step.config : {};
-    const success = isRecord(step.successConfig) ? step.successConfig : null;
-    const payload = { type: step.type, id: step.stepKey };
-    if (step.label) payload.label = step.label;
+  const nodes = (workflow.nodes || []).map((node) => {
+    const cfg = isRecord(node.config) ? node.config : {};
+    const success = isRecord(node.successConfig) ? node.successConfig : null;
+    const payload = { type: node.type, id: node.nodeKey };
+    if (node.label) payload.label = node.label;
     Object.assign(payload, cfg);
-    if (typeof step.nextStepKey === "string" && step.nextStepKey.trim()) {
-      payload.next = step.nextStepKey.trim();
-    }
-    if (typeof step.exitStepKey === "string" && step.exitStepKey.trim()) {
-      payload.exit = step.exitStepKey.trim();
-    }
-    if (Array.isArray(cfg.branches)) {
-      payload.branches = cfg.branches;
-    }
     if (success && Object.keys(success).length > 0) {
       payload.success = success;
     }
+    payload.config = cfg;
     return payload;
   });
-  const startId = typeof workflow.startStepId === "string" && workflow.startStepId.trim().length > 0
-    ? workflow.startStepId.trim()
-    : workflow.steps[0]?.stepKey;
-  return { name, description, start: startId, steps };
+  const edges = (workflow.edges || []).map((edge) => {
+    const payload = {
+      id: edge.edgeKey,
+      from: edge.sourceKey,
+      to: edge.targetKey ?? null,
+    };
+    if (edge.label) payload.label = edge.label;
+    if (edge.condition != null) payload.condition = edge.condition;
+    if (edge.metadata != null) payload.metadata = edge.metadata;
+    if (typeof edge.priority === "number") payload.priority = edge.priority;
+    return payload;
+  });
+  const startId = typeof workflow.startNodeId === "string" && workflow.startNodeId.trim().length > 0
+    ? workflow.startNodeId.trim()
+    : workflow.nodes?.[0]?.nodeKey;
+  return { name, description, start: startId, nodes, edges };
 }
 
 function isRecord(value) {
@@ -367,7 +544,7 @@ async function createDraftWorkflow() {
           title: "Untitled workflow",
           description: "",
         },
-        include: { steps: { orderBy: { id: "asc" } } },
+        include: WORKFLOW_INCLUDE,
       });
       return workflow;
     } catch (error) {

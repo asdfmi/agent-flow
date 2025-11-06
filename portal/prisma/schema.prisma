@@ -12,21 +12,20 @@ model Workflow {
   slug        String        @unique
   title       String
   description String?
-  startStepId String?
+  startNodeId String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
-  steps       WorkflowStep[]
+  nodes       WorkflowNode[]
+  edges       WorkflowEdge[]
   runs        WorkflowRun[]
 }
 
-model WorkflowStep {
+model WorkflowNode {
   id            Int           @id @default(autoincrement())
   workflow      Workflow      @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   workflowId    Int
-  stepKey       String
-  type          WorkflowStepType
-  nextStepKey   String?
-  exitStepKey   String?
+  nodeKey       String
+  type          WorkflowNodeType
   label         String?
   config        Json?
   successConfig Json?
@@ -34,10 +33,30 @@ model WorkflowStep {
   updatedAt     DateTime      @updatedAt
 
   @@index([workflowId])
-  @@unique([workflowId, stepKey])
+  @@unique([workflowId, nodeKey])
 }
 
-enum WorkflowStepType {
+model WorkflowEdge {
+  id         Int          @id @default(autoincrement())
+  workflow   Workflow     @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  workflowId Int
+  edgeKey    String
+  sourceKey  String
+  targetKey  String?
+  label      String?
+  condition  Json?
+  metadata   Json?
+  /// Lower numbers are evaluated first when selecting the next node.
+  priority   Int?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([workflowId])
+  @@index([workflowId, sourceKey])
+  @@unique([workflowId, edgeKey])
+}
+
+enum WorkflowNodeType {
   navigate
   wait
   scroll
@@ -47,8 +66,6 @@ enum WorkflowStepType {
   log
   script
   extract_text
-  if
-  loop
 }
 
 model WorkflowRun {

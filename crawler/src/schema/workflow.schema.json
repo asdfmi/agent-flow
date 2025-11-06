@@ -2,41 +2,64 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://browgent.dev/schema/workflow.json",
   "type": "object",
-  "required": ["steps"],
+  "required": ["nodes"],
   "additionalProperties": false,
   "properties": {
     "name": { "type": "string" },
     "description": { "type": "string" },
     "start": { "type": "string", "minLength": 1 },
-    "steps": {
+    "nodes": {
       "type": "array",
-      "items": { "$ref": "#/$defs/step" },
+      "items": { "$ref": "#/$defs/node" },
+      "default": []
+    },
+    "edges": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edge" },
       "default": []
     }
   },
   "$defs": {
-    "step": {
+    "node": {
       "oneOf": [
-        { "$ref": "#/$defs/navigateStep" },
-        { "$ref": "#/$defs/waitStep" },
-        { "$ref": "#/$defs/scrollStep" },
-        { "$ref": "#/$defs/clickStep" },
-        { "$ref": "#/$defs/fillStep" },
-        { "$ref": "#/$defs/pressStep" },
-        { "$ref": "#/$defs/logStep" },
-        { "$ref": "#/$defs/scriptStep" },
-        { "$ref": "#/$defs/extractTextStep" },
-        { "$ref": "#/$defs/ifStep" },
-        { "$ref": "#/$defs/loopStep" }
+        { "$ref": "#/$defs/navigateNode" },
+        { "$ref": "#/$defs/waitNode" },
+        { "$ref": "#/$defs/scrollNode" },
+        { "$ref": "#/$defs/clickNode" },
+        { "$ref": "#/$defs/fillNode" },
+        { "$ref": "#/$defs/pressNode" },
+        { "$ref": "#/$defs/logNode" },
+        { "$ref": "#/$defs/scriptNode" },
+        { "$ref": "#/$defs/extractTextNode" }
       ]
     },
-    "branch": {
+    "edge": {
       "type": "object",
-      "required": ["next"],
+      "required": ["id", "from"],
       "additionalProperties": false,
       "properties": {
-        "condition": { "$ref": "#/$defs/condition" },
-        "next": { "type": "string", "minLength": 1 }
+        "id": { "type": "string", "minLength": 1 },
+        "from": { "type": "string", "minLength": 1 },
+        "to": {
+          "anyOf": [
+            { "type": "string", "minLength": 1 },
+            { "type": "null" }
+          ]
+        },
+        "priority": { "type": "number" },
+        "label": { "type": "string" },
+        "condition": {
+          "anyOf": [
+            { "$ref": "#/$defs/condition" },
+            { "type": "null" }
+          ]
+        },
+        "metadata": {
+          "anyOf": [
+            { "type": "object" },
+            { "type": "null" }
+          ]
+        }
       }
     },
     "xpathTarget": {
@@ -103,7 +126,7 @@
         }
       ]
     },
-    "navigateStep": {
+    "navigateNode": {
       "type": "object",
       "required": ["id", "type", "url", "label"],
       "additionalProperties": false,
@@ -113,11 +136,10 @@
         "url": { "type": "string", "minLength": 1 },
         "waitUntil": { "type": "string" },
         "success": { "$ref": "#/$defs/success" },
-        "label": { "type": "string" },
-        "next": { "type": "string", "minLength": 1 }
+        "label": { "type": "string" }
       }
     },
-    "waitStep": {
+    "waitNode": {
       "type": "object",
       "required": ["id", "type", "label"],
       "additionalProperties": false,
@@ -125,10 +147,10 @@
         "id": { "type": "string", "minLength": 1 },
         "type": { "const": "wait" },
         "label": { "type": "string" },
-        "next": { "type": "string", "minLength": 1 }
+        "success": { "$ref": "#/$defs/success" }
       }
     },
-    "scrollStep": {
+    "scrollNode": {
       "type": "object",
       "required": ["id", "type", "label"],
       "additionalProperties": false,
@@ -138,15 +160,14 @@
         "dx": { "type": "number" },
         "dy": { "type": "number" },
         "success": { "$ref": "#/$defs/success" },
-        "label": { "type": "string" },
-        "next": { "type": "string", "minLength": 1 }
+        "label": { "type": "string" }
       },
       "anyOf": [
         { "required": ["dx"] },
         { "required": ["dy"] }
       ]
     },
-    "clickStep": {
+    "clickNode": {
       "type": "object",
       "required": ["id", "type", "xpath", "label"],
       "additionalProperties": false,
@@ -165,11 +186,10 @@
           }
         },
         "success": { "$ref": "#/$defs/success" },
-        "label": { "type": "string" },
-        "next": { "type": "string", "minLength": 1 }
+        "label": { "type": "string" }
       }
     },
-    "fillStep": {
+    "fillNode": {
       "type": "object",
       "required": ["id", "type", "xpath", "value", "label"],
       "additionalProperties": false,
@@ -180,11 +200,10 @@
         "value": { "type": "string" },
         "clear": { "type": "boolean" },
         "success": { "$ref": "#/$defs/success" },
-        "label": { "type": "string" },
-        "next": { "type": "string", "minLength": 1 }
+        "label": { "type": "string" }
       }
     },
-    "pressStep": {
+    "pressNode": {
       "type": "object",
       "required": ["id", "type", "xpath", "key", "label"],
       "additionalProperties": false,
@@ -195,11 +214,10 @@
         "key": { "type": "string", "minLength": 1 },
         "delay": { "type": "number", "minimum": 0 },
         "success": { "$ref": "#/$defs/success" },
-        "label": { "type": "string" },
-        "next": { "type": "string", "minLength": 1 }
+        "label": { "type": "string" }
       }
     },
-    "logStep": {
+    "logNode": {
       "type": "object",
       "required": ["id", "type", "label", "message", "target", "level"],
       "additionalProperties": false,
@@ -210,10 +228,10 @@
         "target": { "type": "string" },
         "level": { "type": "string" },
         "label": { "type": "string" },
-        "next": { "type": "string", "minLength": 1 }
+        "success": { "$ref": "#/$defs/success" }
       }
     },
-    "scriptStep": {
+    "scriptNode": {
       "type": "object",
       "required": ["id", "type", "code", "label"],
       "additionalProperties": false,
@@ -223,11 +241,10 @@
         "code": { "type": "string" },
         "as": { "type": "string" },
         "success": { "$ref": "#/$defs/success" },
-        "label": { "type": "string" },
-        "next": { "type": "string", "minLength": 1 }
+        "label": { "type": "string" }
       }
     },
-    "extractTextStep": {
+    "extractTextNode": {
       "type": "object",
       "required": ["id", "type", "xpath", "as", "label"],
       "additionalProperties": false,
@@ -237,47 +254,8 @@
         "xpath": { "type": "string", "minLength": 1 },
         "as": { "type": "string" },
         "success": { "$ref": "#/$defs/success" },
-        "label": { "type": "string" },
-        "next": { "type": "string", "minLength": 1 }
+        "label": { "type": "string" }
       }
-    },
-    "ifStep": {
-      "type": "object",
-      "required": ["id", "type", "label", "branches"],
-      "additionalProperties": false,
-      "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "type": { "const": "if" },
-        "label": { "type": "string" },
-        "branches": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/branch" },
-          "minItems": 1
-        }
-      }
-    },
-    "loopStep": {
-      "type": "object",
-      "required": ["id", "type", "label", "next", "exit"],
-      "additionalProperties": false,
-      "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "type": { "const": "loop" },
-        "label": { "type": "string" },
-        "next": { "type": "string", "minLength": 1 },
-        "exit": { "type": "string", "minLength": 1 },
-        "times": { "type": "integer", "minimum": 1 },
-        "condition": { "$ref": "#/$defs/condition" },
-        "as": { "type": "string", "minLength": 1 }
-      },
-      "allOf": [
-        {
-          "anyOf": [
-            { "required": ["times"] },
-            { "required": ["condition"] }
-          ]
-        }
-      ]
     }
   }
 }

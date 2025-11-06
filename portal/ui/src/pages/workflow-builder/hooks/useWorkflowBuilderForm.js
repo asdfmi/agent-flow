@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createEmptyStep, toEditableStep } from "../utils/workflowBuilder.js";
+import { createEmptyNode, toEditableEdge, toEditableNode } from "../utils/workflowBuilder.js";
 
 const EMPTY_FORM = {
   slug: "",
   title: "",
   description: "",
-  startStepId: "",
-  steps: [],
+  startNodeId: "",
+  nodes: [],
+  edges: [],
 };
 
 export function useWorkflowBuilderForm(workflow) {
@@ -22,8 +23,12 @@ export function useWorkflowBuilderForm(workflow) {
       return;
     }
 
-    const steps = Array.isArray(nextWorkflow.steps)
-      ? nextWorkflow.steps.map(toEditableStep)
+    const nodes = Array.isArray(nextWorkflow.nodes)
+      ? nextWorkflow.nodes.map(toEditableNode)
+      : [];
+
+    const edges = Array.isArray(nextWorkflow.edges)
+      ? nextWorkflow.edges.map(toEditableEdge)
       : [];
 
     lastSyncRef.current = { id: nextWorkflow.id, updatedAt: nextWorkflow.updatedAt };
@@ -31,13 +36,14 @@ export function useWorkflowBuilderForm(workflow) {
       slug: nextWorkflow.slug ?? "",
       title: nextWorkflow.title ?? "",
       description: nextWorkflow.description ?? "",
-      startStepId: nextWorkflow.startStepId ?? "",
-      steps,
+      startNodeId: nextWorkflow.startNodeId ?? "",
+      nodes,
+      edges,
     });
     setSelectedIndex((current) => {
-      if (steps.length === 0) return -1;
+      if (nodes.length === 0) return -1;
       if (preserveSelection && current >= 0) {
-        return Math.min(current, steps.length - 1);
+        return Math.min(current, nodes.length - 1);
       }
       return 0;
     });
@@ -59,18 +65,18 @@ export function useWorkflowBuilderForm(workflow) {
   );
 
   const handleStartChange = useCallback((event) => {
-    setForm((prev) => ({ ...prev, startStepId: event.target.value }));
+    setForm((prev) => ({ ...prev, startNodeId: event.target.value }));
   }, []);
 
-  const handleAddStep = useCallback(() => {
+  const handleAddNode = useCallback(() => {
     let nextForm = null;
     let nextIndex = -1;
     setForm((prev) => {
-      const newStep = createEmptyStep(prev.steps);
-      const steps = [...prev.steps, newStep];
-      const startStepId = prev.startStepId || (steps[0]?.stepKey ?? "");
-      nextIndex = steps.length - 1;
-      nextForm = { ...prev, steps, startStepId };
+      const newNode = createEmptyNode(prev.nodes);
+      const nodes = [...prev.nodes, newNode];
+      const startNodeId = prev.startNodeId || (nodes[0]?.nodeKey ?? "");
+      nextIndex = nodes.length - 1;
+      nextForm = { ...prev, nodes, startNodeId };
       return nextForm;
     });
     if (nextIndex >= 0) {
@@ -79,62 +85,117 @@ export function useWorkflowBuilderForm(workflow) {
     return nextForm;
   }, []);
 
-  const handleRemoveStep = useCallback((index) => {
+  const handleRemoveNode = useCallback((index) => {
     if (index < 0) return null;
     let nextForm = null;
     setForm((prev) => {
-      if (index >= prev.steps.length) return prev;
-      const steps = prev.steps.filter((_, i) => i !== index);
-      const startStepId = steps.some((step) => step.stepKey === prev.startStepId)
-        ? prev.startStepId
-        : steps[0]?.stepKey ?? "";
+      if (index >= prev.nodes.length) return prev;
+      const node = prev.nodes[index];
+      const nodeKey = node?.nodeKey;
+      const nodes = prev.nodes.filter((_, i) => i !== index);
+      const edges = prev.edges.filter(
+        (edge) => edge.sourceKey !== nodeKey && edge.targetKey !== nodeKey
+      );
+      const startNodeId = nodeKey === prev.startNodeId
+        ? nodes[0]?.nodeKey ?? ""
+        : prev.startNodeId;
       setSelectedIndex((current) => {
-        if (steps.length === 0) return -1;
+        if (nodes.length === 0) return -1;
         if (current > index) return current - 1;
-        if (current === index) return Math.min(index, steps.length - 1);
+        if (current === index) return Math.min(index, nodes.length - 1);
         return current;
       });
-      nextForm = { ...prev, steps, startStepId };
+      nextForm = { ...prev, nodes, edges, startNodeId };
       return nextForm;
     });
     return nextForm;
   }, []);
 
-  const handleSelectStep = useCallback((index) => {
+  const handleSelectNode = useCallback((index) => {
     setSelectedIndex(index);
   }, []);
 
-  const handleStepChange = useCallback((index, updates) => {
+  const handleNodeChange = useCallback((index, updates) => {
     let nextForm = null;
     setForm((prev) => {
-      if (index < 0 || index >= prev.steps.length) return prev;
-      const currentStep = prev.steps[index];
-      const nextStep = { ...currentStep, ...updates };
-      const steps = prev.steps.map((step, i) => (i === index ? nextStep : step));
-      const startStepId = currentStep.stepKey === prev.startStepId && nextStep.stepKey
-        ? nextStep.stepKey
-        : prev.startStepId;
-      nextForm = { ...prev, steps, startStepId };
+      if (index < 0 || index >= prev.nodes.length) return prev;
+      const currentNode = prev.nodes[index];
+      const nextNode = { ...currentNode, ...updates };
+      const nodes = prev.nodes.map((node, i) => (i === index ? nextNode : node));
+      let startNodeId = prev.startNodeId;
+      if (currentNode.nodeKey === prev.startNodeId && nextNode.nodeKey) {
+        startNodeId = nextNode.nodeKey;
+      }
+      let edges = prev.edges;
+      const currentKey = currentNode.nodeKey;
+      const nextKey = nextNode.nodeKey;
+      if (currentKey && nextKey && currentKey !== nextKey) {
+        edges = prev.edges.map((edge) => {
+          if (!edge) return edge;
+          let changed = false;
+          const updated = { ...edge };
+          if (edge.sourceKey === currentKey) {
+            updated.sourceKey = nextKey;
+            changed = true;
+          }
+          if (edge.targetKey === currentKey) {
+            updated.targetKey = nextKey;
+            changed = true;
+          }
+          return changed ? updated : edge;
+        });
+      }
+      nextForm = { ...prev, nodes, edges, startNodeId };
       return nextForm;
     });
     return nextForm;
   }, []);
 
-  const selectedStep = useMemo(
-    () => (selectedIndex >= 0 ? form.steps[selectedIndex] ?? null : null),
-    [form.steps, selectedIndex]
+  const replaceEdgesForNode = useCallback((nodeKey, builder) => {
+    let nextForm = null;
+    setForm((prev) => {
+      const existing = prev.edges.filter((edge) => edge.sourceKey === nodeKey);
+      const nextNodeEdgesRaw = builder(existing, prev) || [];
+      const nextNodeEdges = nextNodeEdgesRaw
+        .filter(Boolean)
+        .map((edge) => ({
+          edgeKey: String(edge.edgeKey || "").trim(),
+          sourceKey: nodeKey,
+          targetKey: String(
+            typeof edge.targetKey === "string"
+              ? edge.targetKey
+              : typeof edge.target === "string"
+                ? edge.target
+                : ""
+          ).trim(),
+          label: edge.label ?? "",
+          condition: edge.condition && typeof edge.condition === "object" ? edge.condition : null,
+          metadata: edge.metadata && typeof edge.metadata === "object" ? edge.metadata : null,
+          priority: typeof edge.priority === "number" ? edge.priority : null,
+        }));
+      const remainder = prev.edges.filter((edge) => edge.sourceKey !== nodeKey);
+      nextForm = { ...prev, edges: [...remainder, ...nextNodeEdges] };
+      return nextForm;
+    });
+    return nextForm;
+  }, []);
+
+  const selectedNode = useMemo(
+    () => (selectedIndex >= 0 ? form.nodes[selectedIndex] ?? null : null),
+    [form.nodes, selectedIndex]
   );
 
   return {
     form,
     selectedIndex,
-    selectedStep,
+    selectedNode,
     handleMetaChange,
     handleStartChange,
-    handleAddStep,
-    handleRemoveStep,
-    handleSelectStep,
-    handleStepChange,
+    handleAddNode,
+    handleRemoveNode,
+    handleSelectNode,
+    handleNodeChange,
+    replaceEdgesForNode,
     syncFromWorkflow,
   };
 }

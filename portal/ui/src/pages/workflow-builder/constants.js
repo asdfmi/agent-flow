@@ -1,4 +1,4 @@
-export const STEP_TYPES = [
+export const NODE_TYPES = [
   "navigate",
   "wait",
   "scroll",
@@ -8,8 +8,6 @@ export const STEP_TYPES = [
   "log",
   "script",
   "extract_text",
-  "if",
-  "loop",
 ];
 
 export const SUCCESS_TYPES = [
@@ -25,4 +23,6 @@ export const BRANCH_CONDITION_TYPES = [
   { value: "visible", label: "Element visible (XPath)" },
   { value: "exists", label: "Element exists (XPath)" },
   { value: "urlIncludes", label: "URL contains string" },
+  { value: "delay", label: "Delay (seconds)" },
+  { value: "script", label: "Script" },
 ];

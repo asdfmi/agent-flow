@@ -1,4 +1,4 @@
-const STEP_META = {
+const NODE_META = {
   navigate: { label: "Navigate", color: "primary" },
   wait: { label: "Wait", color: "default" },
   scroll: { label: "Scroll", color: "secondary" },
@@ -8,12 +8,10 @@ const STEP_META = {
   log: { label: "Log", color: "warning" },
   script: { label: "Script", color: "secondary" },
   extract_text: { label: "Extract text", color: "success" },
-  if: { label: "Branch", color: "warning" },
-  loop: { label: "Loop", color: "secondary" },
 };
 
-export function getStepMeta(type) {
-  return STEP_META[type] || { label: type || "step", color: "default" };
+export function getNodeMeta(type) {
+  return NODE_META[type] || { label: type || "node", color: "default" };
 }
 
-export default STEP_META;
+export default NODE_META;

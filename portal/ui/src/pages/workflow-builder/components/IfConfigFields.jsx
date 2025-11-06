@@ -10,47 +10,46 @@ import {
 } from "@mui/material";
 import { BRANCH_CONDITION_TYPES } from "../constants.js";
 import {
-  createDefaultBranch,
+  createDefaultBranchEdge,
   createDefaultBranchCondition,
   getBranchConditionType,
+  parseNumber,
 } from "../utils/workflowBuilder.js";
 
-export default function IfConfigFields({ config, onChange }) {
-  const branches = Array.isArray(config.branches) ? config.branches : [];
+export default function IfConfigFields({ edges, onChange }) {
+  const list = Array.isArray(edges) ? edges : [];
 
   const updateBranch = (index, branch) => {
-    const nextBranches = branches.map((current, i) => (i === index ? branch : current));
-    onChange({ ...config, branches: nextBranches });
+    const next = list.map((current, i) => (i === index ? branch : current));
+    onChange(next);
   };
 
   const removeBranch = (index) => {
-    const nextBranches = branches.filter((_, i) => i !== index);
-    onChange({ ...config, branches: nextBranches });
+    const next = list.filter((_, i) => i !== index);
+    onChange(next);
   };
 
   const addBranch = () => {
-    const nextBranches = [...branches, createDefaultBranch()];
-    onChange({ ...config, branches: nextBranches });
+    onChange([...list, createDefaultBranchEdge()]);
   };
 
   return (
     <Stack spacing={1.5}>
-      <Typography variant="subtitle2">Branches</Typography>
-      {branches.length === 0 ? (
+      {list.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
-          No branches defined yet.
+          No conditional edges defined yet.
         </Typography>
       ) : (
         <Stack spacing={1.5}>
-          {branches.map((branch, index) => (
-            <Paper key={index} variant="outlined" sx={{ p: 2 }}>
+          {list.map((branch, index) => (
+            <Paper key={branch.edgeKey || index} variant="outlined" sx={{ p: 2 }}>
               <Stack spacing={1.25}>
                 <Typography variant="subtitle2">Branch {index + 1}</Typography>
                 <TextField
-                  label="Next step key"
-                  value={branch.next ?? ""}
+                  label="Target node key"
+                  value={branch.targetKey ?? ""}
                   onChange={(event) =>
-                    updateBranch(index, { ...branch, next: event.target.value })
+                    updateBranch(index, { ...branch, targetKey: event.target.value })
                   }
                   fullWidth
                 />
@@ -70,7 +69,7 @@ export default function IfConfigFields({ config, onChange }) {
       )}
       <Box>
         <Button variant="outlined" size="small" onClick={addBranch}>
-          Add branch
+          Add edge
         </Button>
       </Box>
     </Stack>
@@ -78,8 +77,19 @@ export default function IfConfigFields({ config, onChange }) {
 }
 
 IfConfigFields.propTypes = {
-  config: PropTypes.object.isRequired,
+  edges: PropTypes.arrayOf(
+    PropTypes.shape({
+      edgeKey: PropTypes.string,
+      targetKey: PropTypes.string,
+      condition: PropTypes.object,
+      priority: PropTypes.number,
+    })
+  ),
   onChange: PropTypes.func.isRequired,
+};
+
+IfConfigFields.defaultProps = {
+  edges: [],
 };
 
 function BranchConditionEditor({ value, onChange }) {
@@ -115,6 +125,35 @@ function BranchConditionEditor({ value, onChange }) {
           })
         }
         fullWidth
+      />
+    );
+  } else if (type === "delay") {
+    content = (
+      <TextField
+        label="Delay (seconds)"
+        type="number"
+        value={value?.delay ?? ""}
+        onChange={(event) =>
+          onChange({
+            delay: parseNumber(event.target.value) ?? 1,
+          })
+        }
+        fullWidth
+      />
+    );
+  } else if (type === "script") {
+    content = (
+      <TextField
+        label="Script"
+        value={value?.script?.code ?? ""}
+        onChange={(event) =>
+          onChange({
+            script: { code: event.target.value },
+          })
+        }
+        fullWidth
+        multiline
+        minRows={3}
       />
     );
   }

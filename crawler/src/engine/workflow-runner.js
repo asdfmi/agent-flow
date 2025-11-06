@@ -11,8 +11,6 @@ import handlePress from './steps/press.js';
 import handleLog from './steps/log.js';
 import handleScript from './steps/script.js';
 import handleExtractText from './steps/extractText.js';
-import handleIf from './steps/if.js';
-import handleLoop from './steps/loop.js';
 
 const STEP_HANDLERS = {
   navigate: handleNavigate,
@@ -24,8 +22,6 @@ const STEP_HANDLERS = {
   log: handleLog,
   script: handleScript,
   extract_text: handleExtractText,
-  if: handleIf,
-  loop: handleLoop,
 };
 
 export class WorkflowRunner {
@@ -38,8 +34,9 @@ export class WorkflowRunner {
     this.browserSession = null;
     this.events = null;
     this.successEvaluator = null;
-    this.stepIndex = null;
-    this.loopStates = new Map();
+    this.nodeIndex = null;
+    this.nodeList = [];
+    this.edgesBySource = new Map();
   }
 
   async run() {
@@ -51,13 +48,14 @@ export class WorkflowRunner {
 
     await this.events.runStatus('running');
     try {
-      const pointerPlan = this.#buildStepIndex(this.workflow.steps);
-      if (pointerPlan) {
-        this.stepIndex = pointerPlan.map;
-        await this.#executeFrom(pointerPlan.startId);
-      } else {
-        await this.#executeSteps(this.workflow.steps);
+      const plan = this.#buildExecutionPlan();
+      if (!plan) {
+        throw new Error('workflow has no nodes to execute');
       }
+      this.nodeIndex = plan.map;
+      this.nodeList = plan.list;
+      this.edgesBySource = plan.edgesBySource;
+      await this.#executeFrom(plan.startId);
       await this.events.runStatus('succeeded');
       await this.events.done({ ok: true });
     } catch (error) {
@@ -71,67 +69,130 @@ export class WorkflowRunner {
     }
   }
 
-  #buildStepIndex(steps) {
-    if (!Array.isArray(steps) || steps.length === 0) return null;
+  #buildExecutionPlan() {
+    const nodes = Array.isArray(this.workflow?.nodes)
+      ? this.workflow.nodes
+      : Array.isArray(this.workflow?.steps)
+        ? this.workflow.steps
+        : [];
+    if (nodes.length === 0) return null;
+
     const map = new Map();
-    for (let i = 0; i < steps.length; i += 1) {
-      const step = steps[i];
-      const id = typeof step?.id === 'string' ? step.id.trim() : '';
+    for (let i = 0; i < nodes.length; i += 1) {
+      const step = nodes[i];
+      const id = typeof step?.id === 'string'
+        ? step.id.trim()
+        : typeof step?.nodeKey === 'string'
+          ? step.nodeKey.trim()
+          : '';
       if (!id) {
         return null;
       }
+      if (typeof step.id !== 'string' || !step.id.trim()) {
+        step.id = id;
+      }
       map.set(id, { step, index: i });
     }
-    const defaultStart = steps[0]?.id;
+
+    const edgesBySource = new Map();
+    const edges = Array.isArray(this.workflow?.edges) ? this.workflow.edges : [];
+    for (const edge of edges) {
+      const from =
+        typeof edge?.from === 'string'
+          ? edge.from.trim()
+        : typeof edge?.source === 'string'
+          ? edge.source.trim()
+          : typeof edge?.sourceKey === 'string'
+            ? edge.sourceKey.trim()
+            : '';
+      if (!from) continue;
+      const to =
+        typeof edge?.to === 'string'
+          ? edge.to.trim()
+          : typeof edge?.target === 'string'
+            ? edge.target.trim()
+            : typeof edge?.targetKey === 'string'
+              ? edge.targetKey.trim()
+              : '';
+      const normalized = {
+        id: typeof edge?.id === 'string' ? edge.id : typeof edge?.edgeKey === 'string' ? edge.edgeKey : undefined,
+        from,
+        to: to || null,
+        label: typeof edge?.label === 'string' ? edge.label : null,
+        condition: edge?.condition && typeof edge.condition === 'object' ? edge.condition : null,
+        metadata: edge?.metadata && typeof edge.metadata === 'object' ? edge.metadata : null,
+      };
+      if (typeof edge?.priority === 'number' && Number.isFinite(edge.priority)) {
+        normalized.priority = edge.priority;
+      }
+      const list = edgesBySource.get(from) ?? [];
+      list.push(normalized);
+      edgesBySource.set(from, list);
+    }
+
+    for (const list of edgesBySource.values()) {
+      list.sort((a, b) => {
+        const aPriority = typeof a.priority === 'number' ? a.priority : Number.MAX_SAFE_INTEGER;
+        const bPriority = typeof b.priority === 'number' ? b.priority : Number.MAX_SAFE_INTEGER;
+        if (aPriority !== bPriority) return aPriority - bPriority;
+        return 0;
+      });
+    }
+
+    const defaultStart = nodes[0]
+      ? (typeof nodes[0]?.id === 'string'
+        ? nodes[0].id
+        : typeof nodes[0]?.nodeKey === 'string'
+          ? nodes[0].nodeKey
+          : '')
+      : '';
     const requestedStart = typeof this.workflow.start === 'string' ? this.workflow.start.trim() : '';
     const startId = requestedStart && map.has(requestedStart) ? requestedStart : defaultStart;
     if (!startId) return null;
-    return { startId, map };
-  }
 
-  async #executeSteps(steps, meta = {}) {
-    if (!Array.isArray(steps)) return;
-    for (const step of steps) {
-      const stepMeta = step?.id ? { ...meta, stepId: step.id, type: step.type } : meta;
-      await this.#executeStep(step, stepMeta);
-    }
+    return { startId, map, list: nodes, edgesBySource };
   }
 
   async #executeFrom(startId) {
     let currentId = startId;
     while (currentId) {
-      const entry = this.stepIndex?.get(currentId);
+      const entry = this.nodeIndex?.get(currentId);
       if (!entry) {
-        throw new Error(`unknown step id: ${currentId}`);
+        throw new Error(`unknown node id: ${currentId}`);
       }
       const { step, index } = entry;
       const directive = await this.#executeStep(step, { stepId: step.id });
-      let nextStepId = typeof directive?.nextStepId === 'string' ? directive.nextStepId : undefined;
+      let nextStepId = typeof directive?.nextStepId === 'string' ? directive.nextStepId.trim() : undefined;
       if (directive?.nextStepId === null) {
         nextStepId = null;
       }
       if (typeof nextStepId === 'undefined' || nextStepId === '') {
-        if (typeof step.next === 'string' && step.next.trim()) {
-          nextStepId = step.next.trim();
-        } else {
-          const fallback = this.#getSequentialNext(index);
-          nextStepId = fallback?.step?.id;
-        }
+        nextStepId = await this.#selectNextNode(step.id);
+      }
+      if (typeof nextStepId === 'undefined') {
+        const fallback = this.#getSequentialNext(index);
+        nextStepId = fallback?.step?.id;
       }
       if (!nextStepId) break;
-      if (!this.stepIndex.has(nextStepId)) {
-        throw new Error(`unknown next step id: ${nextStepId}`);
+      if (!this.nodeIndex.has(nextStepId)) {
+        throw new Error(`unknown next node id: ${nextStepId}`);
       }
       currentId = nextStepId;
     }
   }
 
   #getSequentialNext(index) {
-    const steps = this.workflow.steps;
-    if (!Array.isArray(steps)) return null;
-    const nextStep = steps[index + 1];
-    if (!nextStep?.id) return null;
-    return this.stepIndex?.get(nextStep.id) ?? null;
+    const nodes = this.nodeList;
+    if (!Array.isArray(nodes)) return null;
+    const nextStep = nodes[index + 1];
+    if (!nextStep) return null;
+    const nextId = typeof nextStep?.id === 'string'
+      ? nextStep.id
+      : typeof nextStep?.nodeKey === 'string'
+        ? nextStep.nodeKey
+        : null;
+    if (!nextId) return null;
+    return this.nodeIndex?.get(nextId) ?? null;
   }
 
   async #executeStep(step, meta) {
@@ -158,7 +219,7 @@ export class WorkflowRunner {
         }
       }
       if (!handled) {
-        await this.successEvaluator.waitFor(step.success, { meta: enrichedMeta });
+        await this.successEvaluator.waitFor(step.success);
       }
       await this.events.stepEnd({ index, ok: true, meta: enrichedMeta });
       return { nextStepId };
@@ -167,6 +228,21 @@ export class WorkflowRunner {
       await this.events.stepEnd({ index, ok: false, error: message, meta: enrichedMeta });
       throw error;
     }
+  }
+
+  async #selectNextNode(stepId) {
+    const edges = this.edgesBySource.get(stepId);
+    if (!edges || edges.length === 0) {
+      return undefined;
+    }
+    for (const edge of edges) {
+      if (edge.condition) {
+        const ok = await this.successEvaluator.evaluate(edge.condition);
+        if (!ok) continue;
+      }
+      return edge.to ?? null;
+    }
+    return undefined;
   }
 
   async evaluateOnPage(code) {

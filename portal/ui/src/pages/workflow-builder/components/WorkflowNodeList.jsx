@@ -12,8 +12,8 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 
-function StepListItem({ step, index, isSelected, isStart, isActive, onSelect }) {
-  const label = step.label?.trim() || step.stepKey || `Step ${index + 1}`;
+function NodeListItem({ node, index, isSelected, isStart, isActive, onSelect }) {
+  const label = node.label?.trim() || node.nodeKey || `Node ${index + 1}`;
 
   return (
     <ListItemButton
@@ -34,7 +34,7 @@ function StepListItem({ step, index, isSelected, isStart, isActive, onSelect }) 
         <Chip
           size="small"
           color="default"
-          label={step.type}
+          label={node.type}
           sx={{ textTransform: "uppercase", fontSize: "0.65rem" }}
         />
         {isStart ? (
@@ -46,16 +46,14 @@ function StepListItem({ step, index, isSelected, isStart, isActive, onSelect }) 
       </Stack>
       <ListItemText
         primaryTypographyProps={{ variant: "caption", color: "text.secondary" }}
-        primary={`Key: ${step.stepKey || "-"}`}
-        secondaryTypographyProps={{ variant: "caption", color: "text.secondary" }}
-        secondary={step.description || ""}
+        primary={`Key: ${node.nodeKey || "-"}`}
       />
     </ListItemButton>
   );
 }
 
-StepListItem.propTypes = {
-  step: PropTypes.object.isRequired,
+NodeListItem.propTypes = {
+  node: PropTypes.object.isRequired,
   index: PropTypes.number.isRequired,
   isSelected: PropTypes.bool.isRequired,
   isStart: PropTypes.bool.isRequired,
@@ -63,13 +61,13 @@ StepListItem.propTypes = {
   onSelect: PropTypes.func.isRequired,
 };
 
-export default function WorkflowStepList({
-  steps,
+export default function WorkflowNodeList({
+  nodes,
   selectedIndex,
-  startStepId,
-  activeStepKey,
-  onSelectStep,
-  onAddStep,
+  startNodeId,
+  activeNodeKey,
+  onSelectNode,
+  onAddNode,
 }) {
   return (
     <Box
@@ -94,11 +92,11 @@ export default function WorkflowStepList({
         }}
       >
         <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Typography variant="subtitle1">Steps</Typography>
+          <Typography variant="subtitle1">Nodes</Typography>
           <Button
             size="small"
             startIcon={<AddIcon fontSize="small" />}
-            onClick={onAddStep}
+            onClick={onAddNode}
             variant="contained"
           >
             New
@@ -107,20 +105,20 @@ export default function WorkflowStepList({
       </Box>
 
       <List sx={{ px: 2, pt: 2, pb: 0 }}>
-        {steps.length === 0 ? (
+        {nodes.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
-            No steps yet. Create your first step to begin.
+            No nodes yet. Create your first node to begin.
           </Typography>
         ) : (
-          steps.map((step, index) => (
-            <StepListItem
-              key={step.stepKey || index}
-              step={step}
+          nodes.map((node, index) => (
+            <NodeListItem
+              key={node.nodeKey || index}
+              node={node}
               index={index}
               isSelected={index === selectedIndex}
-              isStart={startStepId ? startStepId === step.stepKey : index === 0}
-              isActive={activeStepKey ? activeStepKey === step.stepKey : false}
-              onSelect={() => onSelectStep(index)}
+              isStart={startNodeId ? startNodeId === node.nodeKey : index === 0}
+              isActive={activeNodeKey ? activeNodeKey === node.nodeKey : false}
+              onSelect={() => onSelectNode(index)}
             />
           ))
         )}
@@ -130,16 +128,16 @@ export default function WorkflowStepList({
   );
 }
 
-WorkflowStepList.propTypes = {
-  steps: PropTypes.arrayOf(PropTypes.object).isRequired,
+WorkflowNodeList.propTypes = {
+  nodes: PropTypes.arrayOf(PropTypes.object).isRequired,
   selectedIndex: PropTypes.number.isRequired,
-  startStepId: PropTypes.string,
-  activeStepKey: PropTypes.string,
-  onSelectStep: PropTypes.func.isRequired,
-  onAddStep: PropTypes.func.isRequired,
+  startNodeId: PropTypes.string,
+  activeNodeKey: PropTypes.string,
+  onSelectNode: PropTypes.func.isRequired,
+  onAddNode: PropTypes.func.isRequired,
 };
 
-WorkflowStepList.defaultProps = {
-  startStepId: "",
-  activeStepKey: "",
+WorkflowNodeList.defaultProps = {
+  startNodeId: "",
+  activeNodeKey: "",
 };

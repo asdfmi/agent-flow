@@ -1,45 +1,54 @@
-import { BRANCH_CONDITION_TYPES, STEP_TYPES } from "../constants.js";
+import { BRANCH_CONDITION_TYPES, NODE_TYPES } from "../constants.js";
 
 export function getBuilderContext(pathname) {
   const segments = String(pathname || "")
     .split("/")
     .filter(Boolean);
   if (segments.length === 2 && segments[0] === "workflow") {
-    const parsedId = Number(segments[1]);
-    if (Number.isInteger(parsedId) && parsedId > 0) {
-      return { workflowId: parsedId };
+    const slug = segments[1];
+    if (slug) {
+      return { workflowId: decodeURIComponent(slug) };
     }
   }
   return { workflowId: null };
 }
 
-export function createEmptyStep(existingSteps) {
-  const existingKeys = existingSteps.map((step) => step.stepKey);
-  const stepKey = generateStepKey(existingKeys);
+export function createEmptyNode(existingNodes) {
+  const existingKeys = existingNodes.map((node) => node.nodeKey);
+  const nodeKey = generateNodeKey(existingKeys);
   return {
-    stepKey,
+    nodeKey,
     label: "",
     type: "navigate",
-    nextStepKey: "",
-    exitStepKey: "",
     config: getDefaultConfig("navigate"),
     successConfig: null,
   };
 }
 
-export function toEditableStep(step) {
+export function toEditableNode(node) {
   return {
-    stepKey: step.stepKey ?? "",
-    label: step.label ?? "",
-    type: step.type ?? "navigate",
-    nextStepKey: step.nextStepKey ?? "",
-    exitStepKey: step.exitStepKey ?? "",
-    config: step.config && typeof step.config === "object"
-      ? step.config
-      : getDefaultConfig(step.type ?? "navigate"),
-    successConfig: step.successConfig && typeof step.successConfig === "object"
-      ? step.successConfig
+    nodeKey: node.nodeKey ?? "",
+    label: node.label ?? "",
+    type: node.type ?? "navigate",
+    config: node.config && typeof node.config === "object"
+      ? node.config
+      : getDefaultConfig(node.type ?? "navigate"),
+    successConfig: node.successConfig && typeof node.successConfig === "object"
+      ? node.successConfig
       : null,
+  };
+}
+
+export function toEditableEdge(edge) {
+  const edgeKey = String(edge.edgeKey || edge.id || "").trim();
+  return {
+    edgeKey,
+    sourceKey: edge.sourceKey ?? edge.source ?? edge.from ?? "",
+    targetKey: edge.targetKey ?? edge.target ?? edge.to ?? "",
+    label: edge.label ?? "",
+    condition: edge.condition && typeof edge.condition === "object" ? edge.condition : null,
+    metadata: edge.metadata && typeof edge.metadata === "object" ? edge.metadata : null,
+    priority: typeof edge.priority === "number" ? edge.priority : null,
   };
 }
 
@@ -61,19 +70,17 @@ export function getDefaultConfig(type) {
       return { code: "", as: "" };
     case "extract_text":
       return { xpath: "", as: "" };
-    case "if":
-      return { branches: [] };
-    case "loop":
-      return { times: 1 };
     default:
       return {};
   }
 }
 
-export function createDefaultBranch() {
+export function createDefaultBranchEdge() {
   return {
-    next: "",
+    edgeKey: "",
+    targetKey: "",
     condition: createDefaultBranchCondition("visible"),
+    priority: null,
   };
 }
 
@@ -85,6 +92,10 @@ export function createDefaultBranchCondition(type) {
       return { exists: { xpath: "" } };
     case "urlIncludes":
       return { urlIncludes: "" };
+    case "delay":
+      return { delay: 1 };
+    case "script":
+      return { script: { code: "" } };
     default:
       return { visible: { xpath: "" } };
   }
@@ -95,6 +106,8 @@ export function getBranchConditionType(condition) {
   if (condition.visible) return "visible";
   if (condition.exists) return "exists";
   if (typeof condition.urlIncludes === "string") return "urlIncludes";
+  if (typeof condition.delay === "number") return "delay";
+  if (condition.script) return "script";
   return BRANCH_CONDITION_TYPES[0].value;
 }
 
@@ -144,57 +157,118 @@ export function buildPayload(form) {
   const slug = String(form.slug || "").trim();
   const title = String(form.title || "").trim();
   const description = String(form.description || "").trim();
-  const startStepId = String(form.startStepId || "").trim();
+  const startNodeId = String(form.startNodeId || "").trim();
 
   if (!slug) errors.push("Slug is required");
   if (!title) errors.push("Title is required");
 
-  if (!Array.isArray(form.steps) || form.steps.length === 0) {
-    errors.push("At least one step is required");
-  }
-
-  const steps = [];
+  const nodes = [];
   const seen = new Set();
 
-  (form.steps || []).forEach((step, index) => {
-    const stepLabel = `Step ${index + 1}`;
-    const stepKey = String(step.stepKey || "").trim();
-    if (!stepKey) {
-      errors.push(`${stepLabel}: step key is required`);
+  (form.nodes || []).forEach((node, index) => {
+    const label = `Node ${index + 1}`;
+    const nodeKey = String(node.nodeKey || "").trim();
+    if (!nodeKey) {
+      errors.push(`${label}: node key is required`);
       return;
     }
-    if (seen.has(stepKey)) {
-      errors.push(`${stepLabel}: step key must be unique`);
+    if (seen.has(nodeKey)) {
+      errors.push(`${label}: node key must be unique`);
       return;
     }
-    seen.add(stepKey);
+    seen.add(nodeKey);
 
-    const type = step.type;
-    if (!STEP_TYPES.includes(type)) {
-      errors.push(`${stepLabel}: unsupported step type "${type}"`);
+    const type = node.type;
+    if (!NODE_TYPES.includes(type)) {
+      errors.push(`${label}: unsupported node type "${type}"`);
       return;
     }
 
-    const config = cleanConfigForType(type, step.config);
-    const configErrors = validateConfig(type, config, stepLabel);
+    const config = cleanConfigForType(type, node.config);
+    const configErrors = validateConfig(type, config, label);
     errors.push(...configErrors);
 
-    const successConfig = cleanSuccessConfig(step.successConfig);
+    const successConfig = cleanSuccessConfig(node.successConfig);
 
-    steps.push({
-      stepKey,
+    nodes.push({
+      nodeKey,
       type,
-      label: String(step.label || "").trim() || null,
-      nextStepKey: String(step.nextStepKey || "").trim() || null,
-      exitStepKey: String(step.exitStepKey || "").trim() || null,
+      label: String(node.label || "").trim() || null,
       ...(config ? { config } : {}),
       ...(successConfig ? { successConfig } : {}),
     });
   });
 
-  if (startStepId && !seen.has(startStepId)) {
-    errors.push("Start step must match one of the defined step keys");
+  if (nodes.length === 0) {
+    errors.push("At least one node is required");
   }
+
+  if (startNodeId && !seen.has(startNodeId)) {
+    errors.push("Start node must match one of the defined node keys");
+  }
+
+  const edges = [];
+  const edgeKeys = new Set();
+  const allEdges = Array.isArray(form.edges) ? form.edges : [];
+
+  allEdges.forEach((edge, index) => {
+    const label = `Edge ${index + 1}`;
+    let edgeKey = String(edge.edgeKey || "").trim();
+    if (!edgeKey) {
+      edgeKey = generateEdgeKey(edgeKeys);
+    }
+    if (edgeKeys.has(edgeKey)) {
+      errors.push(`${label}: edge key must be unique`);
+      return;
+    }
+    edgeKeys.add(edgeKey);
+
+    const sourceKey = String(edge.sourceKey || edge.source || "").trim();
+    if (!sourceKey) {
+      errors.push(`${label}: source node key is required`);
+      return;
+    }
+
+    const targetKeyRaw = String(edge.targetKey || edge.target || edge.to || "").trim();
+    const targetKey = targetKeyRaw || "";
+
+    if (!seen.has(sourceKey)) {
+      errors.push(`${label}: source node "${sourceKey}" does not exist`);
+      return;
+    }
+
+    if (targetKey && !seen.has(targetKey)) {
+      errors.push(`${label}: target node "${targetKey}" does not exist`);
+      return;
+    }
+
+    const condition =
+      edge.condition && typeof edge.condition === "object"
+        ? deepClean(edge.condition)
+        : null;
+
+    const metadata =
+      edge.metadata && typeof edge.metadata === "object"
+        ? deepClean(edge.metadata)
+        : null;
+
+    let priority = null;
+    if (typeof edge.priority === "number" && Number.isFinite(edge.priority)) {
+      priority = edge.priority;
+    } else {
+      priority = index;
+    }
+
+    edges.push({
+      edgeKey,
+      sourceKey,
+      targetKey: targetKey || null,
+      label: String(edge.label || "").trim() || null,
+      ...(condition ? { condition } : {}),
+      ...(metadata ? { metadata } : {}),
+      ...(priority !== null ? { priority } : {}),
+    });
+  });
 
   if (errors.length > 0) {
     throw new Error(errors.join("\n"));
@@ -204,8 +278,9 @@ export function buildPayload(form) {
     slug,
     title,
     description: description || null,
-    startStepId: startStepId || null,
-    steps,
+    startNodeId: startNodeId || null,
+    nodes,
+    edges,
   };
 }
 
@@ -225,36 +300,31 @@ export function formatApiError(payload) {
   return segments.length > 0 ? segments.join("\n") : "Failed to save workflow";
 }
 
-function generateStepKey(existingKeys) {
+export function generateNodeKey(existingKeys) {
   const taken = new Set(existingKeys);
   let index = existingKeys.length + 1;
-  let candidate = `step_${index}`;
+  let candidate = `node_${index}`;
   while (taken.has(candidate)) {
     index += 1;
-    candidate = `step_${index}`;
+    candidate = `node_${index}`;
   }
   return candidate;
 }
 
-function cleanConfigForType(type, config) {
-  if (!config || typeof config !== "object") {
-    if (type === "if") return { branches: [] };
-    return null;
+export function generateEdgeKey(existingKeys) {
+  const taken = new Set(existingKeys);
+  let index = taken.size + 1;
+  let candidate = `edge_${index}`;
+  while (taken.has(candidate)) {
+    index += 1;
+    candidate = `edge_${index}`;
   }
-  if (type === "if") {
-    const branches = Array.isArray(config.branches) ? config.branches : [];
-    const cleanedBranches = branches
-      .map((branch) => {
-        if (!branch || typeof branch !== "object") return null;
-        const next = String(branch.next || "").trim();
-        const condition = branch.condition && typeof branch.condition === "object"
-          ? deepClean(branch.condition)
-          : null;
-        if (!next || !condition) return null;
-        return { next, condition };
-      })
-      .filter(Boolean);
-    return { branches: cleanedBranches };
+  return candidate;
+}
+
+function cleanConfigForType(_type, config) {
+  if (!config || typeof config !== "object") {
+    return null;
   }
   const cleaned = deepClean(config);
   return cleaned ?? null;
@@ -263,42 +333,27 @@ function cleanConfigForType(type, config) {
 function validateConfig(type, config, label) {
   const errors = [];
   if (type === "navigate") {
-    if (!config || !config.url) errors.push(`${label}: URL is required for navigate steps`);
+    if (!config || !config.url) errors.push(`${label}: URL is required for navigate nodes`);
   } else if (type === "click") {
-    if (!config || !config.xpath) errors.push(`${label}: XPath is required for click steps`);
+    if (!config || !config.xpath) errors.push(`${label}: XPath is required for click nodes`);
   } else if (type === "fill") {
-    if (!config || !config.xpath) errors.push(`${label}: XPath is required for fill steps`);
-    if (!config || !config.value) errors.push(`${label}: Value is required for fill steps`);
+    if (!config || !config.xpath) errors.push(`${label}: XPath is required for fill nodes`);
+    if (!config || (!config.value && config.value !== "")) errors.push(`${label}: Value is required for fill nodes`);
   } else if (type === "press") {
-    if (!config || !config.xpath) errors.push(`${label}: XPath is required for press steps`);
-    if (!config || !config.key) errors.push(`${label}: Key is required for press steps`);
+    if (!config || !config.xpath) errors.push(`${label}: XPath is required for press nodes`);
+    if (!config || !config.key) errors.push(`${label}: Key is required for press nodes`);
   } else if (type === "log") {
-    if (!config || !config.message) errors.push(`${label}: Message is required for log steps`);
+    if (!config || !config.message) errors.push(`${label}: Message is required for log nodes`);
   } else if (type === "script") {
-    if (!config || !config.code) errors.push(`${label}: Code is required for script steps`);
+    if (!config || !config.code) errors.push(`${label}: Code is required for script nodes`);
   } else if (type === "extract_text") {
-    if (!config || !config.xpath) errors.push(`${label}: XPath is required for extract_text steps`);
-    if (!config || !config.as) errors.push(`${label}: Variable name is required for extract_text steps`);
-  } else if (type === "if") {
-    const branches = Array.isArray(config?.branches) ? config.branches : [];
-    if (branches.length === 0) {
-      errors.push(`${label}: At least one branch is required for if steps`);
-    } else {
-      branches.forEach((branch, idx) => {
-        if (!branch.next) errors.push(`${label}: Branch ${idx + 1} requires a next step key`);
-        if (!branch.condition) errors.push(`${label}: Branch ${idx + 1} requires a condition`);
-      });
-    }
-  } else if (type === "loop") {
-    const times = config?.times;
-    if (times == null || times <= 0) {
-      errors.push(`${label}: Times must be greater than 0 for loop steps`);
-    }
+    if (!config || !config.xpath) errors.push(`${label}: XPath is required for extract_text nodes`);
+    if (!config || !config.as) errors.push(`${label}: Variable name is required for extract_text nodes`);
   }
   return errors;
 }
 
-function deepClean(value) {
+export function deepClean(value) {
   if (Array.isArray(value)) {
     const items = value
       .map(deepClean)

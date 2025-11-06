@@ -7,8 +7,8 @@ const MAX_LOG_LENGTH = 100;
 export function useWorkflowRun(workflowId) {
   const normalizedId = useMemo(() => {
     if (workflowId == null) return null;
-    const parsed = Number(workflowId);
-    return Number.isFinite(parsed) ? parsed : null;
+    const value = String(workflowId).trim();
+    return value ? value : null;
   }, [workflowId]);
 
   const [workflowState, setWorkflowState] = useState({ loading: true, data: null, error: "" });
@@ -22,8 +22,8 @@ export function useWorkflowRun(workflowId) {
 
   const requestWorkflow = useCallback(async ({ signal } = {}) => {
     if (!normalizedId) {
-      setWorkflowState({ loading: false, data: null, error: "Invalid workflow id" });
-      return { ok: false, error: "invalid_workflow_id" };
+      setWorkflowState({ loading: false, data: null, error: "Invalid workflow identifier" });
+      return { ok: false, error: "invalid_workflow_identifier" };
     }
     setWorkflowState((prev) => ({ ...prev, loading: true, error: "" }));
     try {

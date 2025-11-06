@@ -7,8 +7,6 @@ import PressConfigFields from "./PressConfigFields.jsx";
 import LogConfigFields from "./LogConfigFields.jsx";
 import ScriptConfigFields from "./ScriptConfigFields.jsx";
 import ExtractTextConfigFields from "./ExtractTextConfigFields.jsx";
-import LoopConfigFields from "./LoopConfigFields.jsx";
-import IfConfigFields from "./IfConfigFields.jsx";
 import FallbackConfigFields from "./FallbackConfigFields.jsx";
 import { getDefaultConfig } from "../utils/workflowBuilder.js";
 
@@ -21,11 +19,9 @@ const COMPONENT_BY_TYPE = {
   log: LogConfigFields,
   script: ScriptConfigFields,
   extract_text: ExtractTextConfigFields,
-  if: IfConfigFields,
-  loop: LoopConfigFields,
 };
 
-export default function StepConfigFields({ type, config, onChange }) {
+export default function NodeConfigFields({ type, config, onChange }) {
   const Component = COMPONENT_BY_TYPE[type] || FallbackConfigFields;
   const resolvedConfig = config && typeof config === "object" ? config : getDefaultConfig(type);
 
@@ -36,12 +32,12 @@ export default function StepConfigFields({ type, config, onChange }) {
   return <Component config={resolvedConfig} onChange={onChange} />;
 }
 
-StepConfigFields.propTypes = {
+NodeConfigFields.propTypes = {
   type: PropTypes.string.isRequired,
   config: PropTypes.object,
   onChange: PropTypes.func.isRequired,
 };
 
-StepConfigFields.defaultProps = {
+NodeConfigFields.defaultProps = {
   config: null,
 };

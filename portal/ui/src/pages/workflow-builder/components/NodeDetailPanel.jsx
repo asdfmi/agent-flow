@@ -1,5 +1,4 @@
 import PropTypes from "prop-types";
-import { useEffect, useState } from "react";
 import {
   Alert,
   Box,
@@ -10,27 +9,17 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { STEP_TYPES, SUCCESS_TYPES } from "../constants.js";
+import { NODE_TYPES, SUCCESS_TYPES } from "../constants.js";
 import {
   createDefaultSuccessConfig,
   getDefaultConfig,
   getSuccessType,
   parseNumber,
   cleanSuccessConfig,
+  generateEdgeKey,
 } from "../utils/workflowBuilder.js";
-import StepConfigFields from "./StepConfigFields.jsx";
-
-function cloneStep(value) {
-  if (!value) return null;
-  if (typeof structuredClone === "function") {
-    try {
-      return structuredClone(value);
-    } catch {
-      // fall through
-    }
-  }
-  return JSON.parse(JSON.stringify(value));
-}
+import NodeConfigFields from "./NodeConfigFields.jsx";
+import IfConfigFields from "./IfConfigFields.jsx";
 
 function SuccessConfigEditor({ value, onChange }) {
   const type = getSuccessType(value);
@@ -59,7 +48,7 @@ function SuccessConfigEditor({ value, onChange }) {
         value={type}
         onChange={handleTypeChange}
         size="small"
-        helperText="Workflow step waits for this condition before continuing."
+        helperText="Workflow node waits for this condition before continuing."
       >
         {SUCCESS_TYPES.map((option) => (
           <MenuItem key={option.value} value={option.value}>
@@ -208,39 +197,20 @@ SuccessConfigEditor.defaultProps = {
   value: null,
 };
 
-export default function StepDetailPanel({
-  step,
-  onSave,
+export default function NodeDetailPanel({
+  node,
+  edges,
+  allEdges,
+  onNodeChange,
+  onEdgesChange,
   onDelete,
   canDelete,
   saving,
   error,
+  hasPendingChanges,
+  lastSavedAt,
 }) {
-  const [draft, setDraft] = useState(cloneStep(step));
-
-  useEffect(() => {
-    setDraft(cloneStep(step));
-  }, [step]);
-
-  const handleChange = (updates) => {
-    setDraft((prev) => (prev ? { ...prev, ...updates } : prev));
-  };
-
-  const handleTypeChange = (event) => {
-    const nextType = event.target.value;
-    handleChange({
-      type: nextType,
-      config: getDefaultConfig(nextType),
-      successConfig: null,
-    });
-  };
-
-  const handleSave = async () => {
-    if (!draft) return;
-    await onSave(draft);
-  };
-
-  if (!draft) {
+  if (!node) {
     return (
       <Box
         sx={{
@@ -251,11 +221,116 @@ export default function StepDetailPanel({
         }}
       >
         <Typography variant="body2" color="text.secondary">
-          Select a step from the list to edit its configuration.
+          Select a node from the list to edit its configuration.
         </Typography>
       </Box>
     );
   }
+
+  const statusLabel = saving
+    ? "Saving..."
+    : hasPendingChanges
+      ? "Unsaved changes"
+      : lastSavedAt
+        ? `Saved ${new Date(lastSavedAt).toLocaleTimeString()}`
+        : "Saved";
+
+  const statusColor = saving
+    ? "text.secondary"
+    : hasPendingChanges
+      ? "warning.main"
+      : "success.main";
+
+  const handleFieldChange = (field) => (event) => {
+    onNodeChange({ [field]: event.target.value });
+  };
+  const handleTypeChange = (event) => {
+    const nextType = event.target.value;
+    const updates = {
+      type: nextType,
+      config: getDefaultConfig(nextType),
+      successConfig: null,
+    };
+    onNodeChange(updates);
+    onEdgesChange([]);
+  };
+
+  const edgeKeys = (allEdges || [])
+    .map((edge) => String(edge.edgeKey || "").trim())
+    .filter(Boolean);
+
+  const sortedEdges = (edges || []).slice().sort((a, b) => {
+    const ap = typeof a.priority === "number" ? a.priority : Number.MAX_SAFE_INTEGER;
+    const bp = typeof b.priority === "number" ? b.priority : Number.MAX_SAFE_INTEGER;
+    if (ap !== bp) return ap - bp;
+    return 0;
+  });
+
+  const defaultEdge = sortedEdges.find((edge) => !edge.condition);
+  const defaultTarget = defaultEdge?.targetKey ?? "";
+  const conditionalEdges = sortedEdges
+    .filter((edge) => edge.condition)
+    .map((edge, index) => ({
+      edgeKey: edge.edgeKey,
+      targetKey: edge.targetKey ?? "",
+      condition: edge.condition,
+      priority: typeof edge.priority === "number" ? edge.priority : index,
+    }));
+
+  const emitEdges = (conditionals, defaultTargetKey) => {
+    const usedKeys = new Set(edgeKeys);
+    const prepared = [];
+
+    const ensureKey = (edgeKey) => {
+      let key = String(edgeKey || "").trim();
+      if (!key || usedKeys.has(key)) {
+        key = generateEdgeKey([...usedKeys]);
+      }
+      usedKeys.add(key);
+      return key;
+    };
+
+    (conditionals || []).forEach((entry, index) => {
+      const key = ensureKey(entry.edgeKey);
+      const targetKey = String(entry.targetKey || "").trim();
+      if (!targetKey) return;
+      prepared.push({
+        edgeKey: key,
+        targetKey,
+        condition: entry.condition && typeof entry.condition === "object" ? entry.condition : null,
+        metadata: null,
+        priority: index,
+      });
+    });
+
+    const trimmedDefault = String(defaultTargetKey || "").trim();
+    if (trimmedDefault) {
+      const key = ensureKey(defaultEdge?.edgeKey);
+      prepared.push({
+        edgeKey: key,
+        targetKey: trimmedDefault,
+        condition: null,
+        metadata: defaultEdge?.metadata && typeof defaultEdge.metadata === "object" ? defaultEdge.metadata : null,
+        priority: prepared.length,
+      });
+    }
+
+    onEdgesChange(prepared);
+  };
+
+  const handleDefaultTargetChange = (value) => {
+    emitEdges(conditionalEdges, value);
+  };
+
+  const handleConditionalChange = (nextEdges) => {
+    const sanitized = (nextEdges || []).map((edge, index) => ({
+      edgeKey: edge.edgeKey,
+      targetKey: String(edge.targetKey || "").trim(),
+      condition: edge.condition && typeof edge.condition === "object" ? edge.condition : null,
+      priority: typeof edge.priority === "number" ? edge.priority : index,
+    }));
+    emitEdges(sanitized, defaultTarget);
+  };
 
   return (
     <Box
@@ -271,9 +346,12 @@ export default function StepDetailPanel({
       }}
     >
       <Stack spacing={1}>
-        <Typography variant="h6">Step details</Typography>
+        <Typography variant="h6">Node details</Typography>
         <Typography variant="body2" color="text.secondary">
-          Update the configuration and save to persist changes.
+          Changes are saved automatically.
+        </Typography>
+        <Typography variant="caption" color={statusColor}>
+          {statusLabel}
         </Typography>
       </Stack>
 
@@ -283,21 +361,21 @@ export default function StepDetailPanel({
         <Stack spacing={2}>
           <Stack direction={{ xs: "column", lg: "row" }} spacing={2}>
             <TextField
-              label="Step key"
-              value={draft.stepKey}
-              onChange={(event) => handleChange({ stepKey: event.target.value })}
+              label="Node key"
+              value={node.nodeKey ?? ""}
+              onChange={handleFieldChange("nodeKey")}
               fullWidth
               size="small"
             />
             <TextField
               select
-              label="Step type"
-              value={draft.type}
+              label="Node type"
+              value={node.type}
               onChange={handleTypeChange}
               fullWidth
               size="small"
             >
-              {STEP_TYPES.map((type) => (
+              {NODE_TYPES.map((type) => (
                 <MenuItem key={type} value={type}>
                   {type}
                 </MenuItem>
@@ -306,48 +384,49 @@ export default function StepDetailPanel({
           </Stack>
           <TextField
             label="Label"
-            value={draft.label}
-            onChange={(event) => handleChange({ label: event.target.value })}
+            value={node.label ?? ""}
+            onChange={handleFieldChange("label")}
             fullWidth
             size="small"
-          />
-          <TextField
-            label="Description"
-            value={draft.description ?? ""}
-            onChange={(event) => handleChange({ description: event.target.value })}
-            fullWidth
-            size="small"
-            multiline
-            minRows={2}
           />
         </Stack>
 
-        <Stack direction={{ xs: "column", lg: "row" }} spacing={2}>
-          <TextField
-            label="Next step key"
-            value={draft.nextStepKey}
-            onChange={(event) => handleChange({ nextStepKey: event.target.value })}
-            fullWidth
-            size="small"
-          />
-          <TextField
-            label="Exit step key"
-            value={draft.exitStepKey}
-            onChange={(event) => handleChange({ exitStepKey: event.target.value })}
-            helperText="Used by loop steps."
-            fullWidth
-            size="small"
-          />
+        <Stack spacing={1.5}>
+          <Box>
+            <Typography variant="subtitle2" gutterBottom>
+              Default next node
+            </Typography>
+            <TextField
+              label="Target node key"
+              value={defaultTarget}
+              onChange={(event) => handleDefaultTargetChange(event.target.value)}
+              helperText="Used when no conditional edge matches."
+              fullWidth
+              size="small"
+            />
+          </Box>
+          <Box>
+            <Typography variant="subtitle2" gutterBottom>
+              Conditional edges
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              Edges are evaluated from top to bottom; the first matching condition determines the next node.
+            </Typography>
+            <IfConfigFields
+              edges={conditionalEdges}
+              onChange={handleConditionalChange}
+            />
+          </Box>
         </Stack>
 
         <Box>
           <Typography variant="subtitle2" gutterBottom>
             Configuration
           </Typography>
-          <StepConfigFields
-            type={draft.type}
-            config={draft.config}
-            onChange={(nextConfig) => handleChange({ config: nextConfig })}
+          <NodeConfigFields
+            type={node.type}
+            config={node.config}
+            onChange={(nextConfig) => onNodeChange({ config: nextConfig })}
           />
         </Box>
 
@@ -356,59 +435,58 @@ export default function StepDetailPanel({
             Success condition
           </Typography>
           <SuccessConfigEditor
-            value={draft.successConfig}
-            onChange={(next) => handleChange({ successConfig: next })}
+            value={node.successConfig}
+            onChange={(next) => onNodeChange({ successConfig: next })}
           />
         </Box>
       </Stack>
 
-      <Stack direction="row" justifyContent="space-between">
+      <Stack direction="row" justifyContent="flex-end" spacing={1} alignItems="center">
+        <Typography variant="caption" color="text.secondary">
+          Delete this node
+        </Typography>
         <Button
-          variant="outlined"
+          variant="contained"
           color="error"
+          size="small"
           onClick={onDelete}
           disabled={!canDelete || saving}
         >
-          Delete step
+          Delete
         </Button>
-        <Stack direction="row" spacing={1.5}>
-          <Button variant="outlined" color="inherit" onClick={() => setDraft(cloneStep(step))} disabled={saving}>
-            Reset
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleSave}
-            disabled={saving}
-          >
-            {saving ? "Saving..." : "Save changes"}
-          </Button>
-        </Stack>
       </Stack>
     </Box>
   );
 }
 
-StepDetailPanel.propTypes = {
-  step: PropTypes.shape({
-    stepKey: PropTypes.string,
+NodeDetailPanel.propTypes = {
+  node: PropTypes.shape({
+    nodeKey: PropTypes.string,
     label: PropTypes.string,
     description: PropTypes.string,
-    type: PropTypes.string,
-    nextStepKey: PropTypes.string,
-    exitStepKey: PropTypes.string,
+    type: PropTypes.string.isRequired,
     config: PropTypes.object,
     successConfig: PropTypes.object,
   }),
-  onSave: PropTypes.func.isRequired,
+  edges: PropTypes.arrayOf(PropTypes.object),
+  allEdges: PropTypes.arrayOf(PropTypes.object),
+  onNodeChange: PropTypes.func.isRequired,
+  onEdgesChange: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
   canDelete: PropTypes.bool,
   saving: PropTypes.bool,
   error: PropTypes.string,
+  hasPendingChanges: PropTypes.bool,
+  lastSavedAt: PropTypes.string,
 };
 
-StepDetailPanel.defaultProps = {
-  step: null,
+NodeDetailPanel.defaultProps = {
+  node: null,
+  edges: [],
+  allEdges: [],
   canDelete: true,
   saving: false,
   error: "",
+  hasPendingChanges: false,
+  lastSavedAt: "",
 };

@@ -17,7 +17,7 @@ Responsibilities
 Technology Stack
 ^^^^^^^^^^^^^^^^
 - **Express 5** – Serves REST endpoints under ``/api`` and static UI assets.
-- **Prisma Client** – Provides typed access to the SQLite database for workflows, steps, runs, and metrics.
+- **Prisma Client** – Provides typed access to the SQLite database for workflows, nodes, edges, runs, and metrics.
 - **WebSocket (ws)** – Bridges crawler events to subscribed browsers (`/ws` path).
 - **Vite + React 19 + MUI** – Powers the UI with component-based views and live reload in development.
 
@@ -30,7 +30,7 @@ Runtime Services
 
 Key directories
 ^^^^^^^^^^^^^^^
-- ``prisma/``: ``Workflow`` / ``WorkflowStep`` models and seed script.
+- ``prisma/``: ``Workflow`` / ``WorkflowNode`` / ``WorkflowEdge`` models and seed script.
 - ``server/``: Express API, internal event bus, WebSocket gateway.
 - ``ui/``: Management UI built with Vite, React, and MUI.
 
@@ -39,7 +39,8 @@ Crawler
 Responsibilities
 ^^^^^^^^^^^^^^^^
 - Launch and manage the lifecycle of Playwright browsers
-- Validate workflow JSON and execute steps sequentially
+- Validate workflow JSON, materialise the node/edge graph, and execute nodes sequentially
+- Evaluate outbound edge conditions to choose the next node (or terminate the run)
 - Send step events and screenshots back to the portal
 
 Technology Stack

@@ -16,12 +16,13 @@ const TABLES = {
     listArgs: {
       orderBy: { updatedAt: "desc" },
       include: {
-        _count: { select: { steps: true, runs: true } },
+        _count: { select: { nodes: true, edges: true, runs: true } },
       },
     },
     detailArgs: {
       include: {
-        steps: { orderBy: { id: "asc" } },
+        nodes: { orderBy: { id: "asc" } },
+        edges: { orderBy: { id: "asc" } },
         runs: { orderBy: { id: "desc" }, take: 10 },
       },
     },
@@ -29,18 +30,18 @@ const TABLES = {
       slug: "my-workflow",
       title: "My workflow",
       description: "Optional description",
-      startStepId: null,
+      startNodeId: null,
     },
   },
-  workflowSteps: {
-    label: "Workflow steps",
+  workflowNodes: {
+    label: "Workflow nodes",
     primaryKey: "id",
     parseId(value) {
       const parsed = Number(value);
       if (!Number.isInteger(parsed)) throw new Error("invalid id");
       return parsed;
     },
-    delegate: prisma.workflowStep,
+    delegate: prisma.workflowNode,
     listArgs: {
       orderBy: { updatedAt: "desc" },
       include: {
@@ -54,9 +55,37 @@ const TABLES = {
     },
     example: {
       workflowId: 1,
-      stepKey: "step_1",
+      nodeKey: "node_1",
       type: "navigate",
       config: { url: "https://example.com" },
+    },
+  },
+  workflowEdges: {
+    label: "Workflow edges",
+    primaryKey: "id",
+    parseId(value) {
+      const parsed = Number(value);
+      if (!Number.isInteger(parsed)) throw new Error("invalid id");
+      return parsed;
+    },
+    delegate: prisma.workflowEdge,
+    listArgs: {
+      orderBy: { updatedAt: "desc" },
+      include: {
+        workflow: { select: { id: true, title: true, slug: true } },
+      },
+    },
+    detailArgs: {
+      include: {
+        workflow: { select: { id: true, title: true, slug: true } },
+      },
+    },
+    example: {
+      workflowId: 1,
+      edgeKey: "edge_1",
+      sourceKey: "node_1",
+      targetKey: "node_2",
+      priority: 0,
     },
   },
   workflowRuns: {

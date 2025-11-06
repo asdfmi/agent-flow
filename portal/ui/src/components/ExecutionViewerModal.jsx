@@ -2,7 +2,7 @@ import PropTypes from "prop-types";
 import { useMemo } from "react";
 import { Box, Chip, Dialog, DialogContent, DialogTitle, Paper, Stack, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { getStepMeta } from "./stepMeta.js";
+import { getNodeMeta } from "./nodeMeta.js";
 
 const FALLBACK_TEXT = "Waiting for screenshot...";
 
@@ -13,7 +13,7 @@ export default function ExecutionViewerModal({
   eventLog,
   wsStatus,
   runState,
-  steps,
+  nodes,
   currentStepIndex,
 }) {
   const entries = useMemo(() => eventLog ?? [], [eventLog]);
@@ -85,7 +85,7 @@ export default function ExecutionViewerModal({
                       <Chip size="small" label={event.type} />
                       {typeof event.index === "number" ? (
                         <Typography variant="caption" color="text.secondary">
-                          step: {event.index}
+                          node: {event.index}
                         </Typography>
                       ) : null}
                       <Typography variant="caption" color="text.secondary">
@@ -109,9 +109,9 @@ export default function ExecutionViewerModal({
             pt: 1,
           }}
         >
-          {(steps ?? []).map((step, index) => {
+          {(nodes ?? []).map((node, index) => {
             const isActive = typeof currentStepIndex === "number" && currentStepIndex === index;
-            const meta = getStepMeta(step.type);
+            const meta = getNodeMeta(node.type);
             const chipColor = isActive
               ? meta.color === "default"
                 ? "primary"
@@ -121,8 +121,8 @@ export default function ExecutionViewerModal({
                 : meta.color;
             return (
               <Chip
-                key={step.id ?? index}
-                label={`Step ${index + 1}: ${step.label || meta.label}`}
+                key={node.id ?? index}
+                label={`Node ${index + 1}: ${node.label || meta.label}`}
                 color={chipColor === "default" ? undefined : chipColor}
                 variant={isActive ? "filled" : "outlined"}
                 sx={{
@@ -157,7 +157,7 @@ ExecutionViewerModal.propTypes = {
   runState: PropTypes.shape({
     status: PropTypes.string,
   }).isRequired,
-  steps: PropTypes.arrayOf(
+  nodes: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
       label: PropTypes.string,
@@ -171,6 +171,6 @@ ExecutionViewerModal.defaultProps = {
   screenshot: "",
   eventLog: [],
   wsStatus: "idle",
-  steps: [],
+  nodes: [],
   currentStepIndex: null,
 };

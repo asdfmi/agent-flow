@@ -53,9 +53,9 @@ export default function WorkflowsPage() {
     setCreateError("");
     try {
       const payload = await createDraftWorkflow();
-      const id = payload?.data?.id;
-      if (id) {
-        window.location.href = `/workflow/${id}`;
+      const target = payload?.data?.slug || payload?.data?.id;
+      if (target) {
+        window.location.href = `/workflow/${encodeURIComponent(String(target))}`;
         return;
       }
       throw new Error("draft workflow id missing");
@@ -128,7 +128,8 @@ export default function WorkflowsPage() {
                   variant="outlined"
                   sx={{ p: 2, cursor: "pointer", "&:hover": { boxShadow: 4 } }}
                   onClick={() => {
-                    window.location.href = `/workflow/${workflow.id}`;
+                    const target = workflow.slug || String(workflow.id);
+                    window.location.href = `/workflow/${encodeURIComponent(target)}`;
                   }}
                 >
                   <Stack spacing={1}>
@@ -147,7 +148,8 @@ export default function WorkflowsPage() {
                         variant="contained"
                         onClick={(event) => {
                           event.stopPropagation();
-                          window.location.href = `/workflow/${workflow.id}`;
+                          const target = workflow.slug || String(workflow.id);
+                          window.location.href = `/workflow/${encodeURIComponent(target)}`;
                         }}
                       >
                         View details

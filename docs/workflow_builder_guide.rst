@@ -9,15 +9,15 @@ Prerequisites
 
 Layout Tour
 -----------
-- **Toolbar** – Contains *Run workflow*, *Save*, *Add step*, and *Refresh* controls.
-- **Canvas** – Shows the step sequence using cards. The selected step is outlined; the currently running step is highlighted in blue during execution.
+- **Toolbar** – Contains *Run workflow*, *Save*, *Add node*, and *Refresh* controls.
+- **Canvas** – Shows the node sequence using cards. The selected node is outlined; the currently running node is highlighted in blue during execution.
 - **Sidebar** – Lists metadata such as workflow title, slug, and description (editable inline).
-- **Step drawer** – Opens when you click *Edit* or double-click a step; this is where you configure action-specific fields.
+- **Node drawer** – Opens when you click *Edit* or double-click a node; this is where you configure action-specific fields and transitions.
 
-Adding Steps
+Adding Nodes
 ------------
-1. Click **Add step**. A placeholder step is appended after the current selection.
-2. Open the step editor and set a unique ``stepKey``. Keys act as identifiers for conditional routing.
+1. Click **Add node**. A placeholder node is appended after the current selection.
+2. Open the node editor and set a unique ``nodeKey``. Keys act as identifiers for edges and conditional routing.
 3. Select a ``type``:
    - ``navigate`` – Load a URL and optionally wait for a selector.
    - ``click`` – Click a selector on the page.
@@ -28,14 +28,15 @@ Adding Steps
    - ``log`` – Append a readable message to the event stream.
    - ``script`` – Execute custom JavaScript in the page context.
    - ``extract_text`` – Capture text content and expose it as a metric.
-   - ``if`` / ``loop`` – Branch or iterate based on selectors or stored variables.
 4. Fill the configuration form presented for the selected type. Required fields are marked in the UI.
-5. Optionally set **Next step key** to override the default sequential flow or define **Exit step key** for loops.
-6. Save the step. The workflow persists immediately if the update succeeds.
+5. Configure transitions:
+   - Set **Default next node** to declare the fallback edge when no conditions match.
+   - Add one or more **Conditional edges** with selectors, delays, or scripts to branch the flow.
+6. Save the node. The workflow persists immediately if the update succeeds.
 
 Configuring Success Conditions
 ------------------------------
-For action steps you can declare a success policy under **Success conditions**:
+For action nodes you can declare a success policy under **Success conditions**:
 - ``none`` – No extra check; the step completes when the handler is finished.
 - ``selector`` – Wait until a CSS selector matches an element.
 - ``text`` – Wait until the page contains the provided substring.
@@ -44,10 +45,10 @@ Success checks run after the handler unless the handler reports completion via `
 
 Organising Complex Flows
 ------------------------
-- Use descriptive labels and consistent ``stepKey`` names (e.g. ``open_login``, ``submit_form``).
-- Combine ``if`` and ``loop`` steps to represent conditional branches (for example retrying login) without duplicating sequences.
-- Record outcomes with ``log`` or ``extract_text`` to provide traceability and metrics for downstream analysis.
-- Keep loops finite: configure maximum iterations or provide a guard step that triggers ``exitStepKey``.
+- Use descriptive labels and consistent ``nodeKey`` names (e.g. ``open_login``, ``submit_form``).
+- Combine conditional edges with counter/script nodes to express branches or loops without duplicating sequences.
+- Record outcomes with ``log`` or ``extract_text`` nodes to provide traceability and metrics for downstream analysis.
+- Keep loops finite: track counters or timers in script nodes and add conditional edges that eventually fall back to a default path.
 
 Saving and Versioning
 ---------------------

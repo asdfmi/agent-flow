@@ -28,12 +28,15 @@ Workflow
    * - ``updatedAt``
      - DateTime
      - Updated timestamp (auto-maintained by Prisma)
-   * - ``startStepId``
+   * - ``startNodeId``
      - String?
-     - Optional entry point step ID when using pointer-based workflows
-   * - ``steps``
-     - WorkflowStep[]
-     - Related steps
+     - Optional entry point node ID when using pointer-based workflows
+   * - ``nodes``
+     - WorkflowNode[]
+     - Related nodes (ordered for default traversal)
+   * - ``edges``
+     - WorkflowEdge[]
+     - Directed transitions between nodes
    * - ``runs``
      - WorkflowRun[]
      - Historical executions for analytics/monitoring
@@ -103,7 +106,7 @@ WorkflowRunMetric
      - DateTime
      - Timestamp when captured
 
-WorkflowStep
+WorkflowNode
 ------------
 
 .. list-table::
@@ -118,24 +121,18 @@ WorkflowStep
    * - ``workflowId``
      - Int
      - Owning workflow ID
-   * - ``stepKey``
+   * - ``nodeKey``
      - String
-     - Unique identifier within the workflow (used for pointer traversal)
-   * - ``nextStepKey``
-     - String?
-     - Optional pointer to the next step when using pointer-based flows
-   * - ``exitStepKey``
-     - String?
-     - Optional pointer used by ``loop`` steps when exiting the loop
+     - Unique identifier within the workflow (referenced by edges and the runner)
    * - ``type``
      - Enum
-     - ``navigate`` / ``wait`` / ``scroll`` / ``click`` / ``fill`` / ``press`` / ``log`` / ``script`` / ``extract_text`` / ``if`` / ``loop``
+     - ``navigate`` / ``wait`` / ``scroll`` / ``click`` / ``fill`` / ``press`` / ``log`` / ``script`` / ``extract_text``
    * - ``label``
      - String?
-     - Optional label
+     - Optional label shown in the UI
    * - ``config``
      - Json?
-     - Step-specific configuration (URL, XPath, input values, etc.). For ``if`` steps this includes ``branches``; for ``loop`` steps this includes settings such as ``times`` or ``condition``.
+     - Node-specific configuration (URL, XPath, input values, etc.)
    * - ``successConfig``
      - Json?
      - Success condition (one of visible / exists / urlIncludes / delay / script)
@@ -150,7 +147,7 @@ WorkflowStep
  ------------------
 
 - **navigate**: Provide ``url`` and optional ``waitUntil`` to navigate.
-- **wait**: Delay-only step, typically via ``success.delay``.
+- **wait**: Delay-only node, typically via ``success.delay``.
 - **scroll**: Scroll by ``dx`` / ``dy`` pixels.
 - **click**: Requires ``xpath``; supports click options (button, clickCount, delay, timeout).
 - **fill**: Fill the element at ``xpath`` with ``value`` (optionally ``clear`` first).
@@ -158,5 +155,43 @@ WorkflowStep
 - **log**: Emit a log message with optional template variables (e.g. ``{{ variables.foo }}``).
 - **script**: Execute JavaScript in the page (``code``) and optionally store the result in ``as``.
 - **extract_text**: Capture text at ``xpath`` and store it under ``as``.
-- **if**: Evaluate ``branches`` sequentially and jump to the first branch whose ``condition`` succeeds (``next`` pointer required).
-- **loop**: Maintain counters/conditions for repeated execution; ``next`` is the loop body entry and ``exit`` is the break destination.
+
+WorkflowEdge
+------------
+
+.. list-table::
+   :header-rows: 1
+
+   * - Field
+     - Type
+     - Notes
+   * - ``id``
+     - Int
+     - Auto increment, primary key
+   * - ``workflowId``
+     - Int
+     - Owning workflow ID
+   * - ``edgeKey``
+     - String
+     - Unique per-workflow identifier
+   * - ``sourceKey``
+     - String
+     - Originating node key
+   * - ``targetKey``
+     - String?
+     - Destination node (``null`` terminates execution)
+   * - ``label``
+     - String?
+     - Optional label shown in the UI
+   * - ``condition``
+     - Json?
+     - Evaluated when deciding whether the edge is taken (same schema as success conditions)
+   * - ``priority``
+     - Int?
+     - Lower numbers are evaluated first; the first matching edge is selected
+   * - ``metadata``
+     - Json?
+     - Reserved for future extensions
+   * - ``createdAt`` / ``updatedAt``
+     - DateTime
+     - Timestamps for auditing

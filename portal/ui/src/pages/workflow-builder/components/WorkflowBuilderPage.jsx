@@ -1,11 +1,11 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   IconButton,
-  Paper,
   Stack,
   Tooltip,
   Typography,
@@ -13,14 +13,18 @@ import {
 import RefreshIcon from "@mui/icons-material/Refresh";
 import ExecutionViewerModal from "../../../components/ExecutionViewerModal.jsx";
 import { useWorkflowRun } from "../../../hooks/useWorkflowRun.js";
-import WorkflowStepList from "./WorkflowStepList.jsx";
-import StepDetailPanel from "./StepDetailPanel.jsx";
+import WorkflowNodeList from "./WorkflowNodeList.jsx";
+import NodeDetailPanel from "./NodeDetailPanel.jsx";
+import WorkflowRunHistory from "./WorkflowRunHistory.jsx";
 import { useWorkflowBuilderForm } from "../hooks/useWorkflowBuilderForm.js";
 import { buildPayload, formatApiError, getBuilderContext } from "../utils/workflowBuilder.js";
 import { HttpError } from "../../../api/client.js";
-import { updateWorkflow as updateWorkflowApi } from "../../../api/workflows.js";
+import { listWorkflowRuns, updateWorkflow as updateWorkflowApi } from "../../../api/workflows.js";
+
+const AUTO_SAVE_DELAY = 1200;
 
 export default function WorkflowBuilderPage() {
+
   const { workflowId } = useMemo(() => getBuilderContext(window.location.pathname), []);
   const {
     workflowState,
@@ -36,52 +40,75 @@ export default function WorkflowBuilderPage() {
   const {
     form,
     selectedIndex,
-    selectedStep,
-    handleAddStep,
-    handleRemoveStep,
-    handleSelectStep,
-    handleStepChange,
+    selectedNode,
+    handleAddNode,
+    handleRemoveNode,
+    handleSelectNode,
+    handleNodeChange,
+    replaceEdgesForNode,
     syncFromWorkflow,
   } = useWorkflowBuilderForm(workflowState.data);
   const [isViewerOpen, setViewerOpen] = useState(false);
   const [isSaving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [runsState, setRunsState] = useState({ loading: true, data: [], error: "" });
+  const [hasPendingChanges, setHasPendingChanges] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState("");
 
-  const onRun = useCallback(async () => {
-    if (!workflowId) return;
-    setViewerOpen(true);
-    const result = await handleRun();
-    if (!result?.ok) {
-      setViewerOpen(false);
-    }
-  }, [handleRun, workflowId]);
+  const hydratingRef = useRef(true);
+  const latestFormRef = useRef(form);
+  const autoSaveTimerRef = useRef(null);
+  const lastSavedSnapshotRef = useRef(JSON.stringify(form));
 
   const isLoading = workflowState.loading && !workflowState.data;
   const loadError = workflowState.error;
   const runError = runState.error;
-  const viewerSteps = useMemo(() => form.steps, [form.steps]);
-  const activeStepKey = typeof currentStepIndex === "number"
-    ? form.steps[currentStepIndex]?.stepKey ?? ""
+  const viewerNodes = useMemo(() => form.nodes, [form.nodes]);
+  const activeNodeKey = typeof currentStepIndex === "number"
+    ? form.nodes[currentStepIndex]?.nodeKey ?? ""
     : "";
-  const canDeleteStep = selectedIndex >= 0 && form.steps.length > 1;
+  const canDeleteNode = selectedIndex >= 0 && form.nodes.length > 1;
 
-  const persistWorkflow = useCallback(async (nextForm) => {
-    if (!workflowId || !nextForm) return false;
+  const applyWorkflowData = useCallback((data, options = {}) => {
+    if (!data) return;
+    hydratingRef.current = true;
+    syncFromWorkflow(data, { preserveSelection: true, force: true, ...options });
+  }, [syncFromWorkflow]);
+
+  const persistWorkflow = useCallback(async (formOverride, { silent = false } = {}) => {
+    const targetForm = formOverride ?? latestFormRef.current;
+    if (!workflowId || !targetForm) return false;
     setSaving(true);
-    setSaveError("");
+    if (!silent) setSaveError("");
     try {
-      const payload = buildPayload(nextForm);
+      const payload = buildPayload(targetForm);
       const response = await updateWorkflowApi(workflowId, payload);
       const workflowData = response?.data;
       if (workflowData) {
-        syncFromWorkflow(workflowData, { preserveSelection: true, force: true });
+        applyWorkflowData(workflowData);
         setSaveError("");
+        setLastSavedAt(new Date().toISOString());
+        lastSavedSnapshotRef.current = JSON.stringify(targetForm);
+        latestFormRef.current = targetForm;
+        setHasPendingChanges(false);
+        if (autoSaveTimerRef.current) {
+          clearTimeout(autoSaveTimerRef.current);
+          autoSaveTimerRef.current = null;
+        }
         return true;
       }
       const refreshed = await reloadWorkflow();
       if (refreshed?.ok && refreshed.data) {
-        syncFromWorkflow(refreshed.data, { preserveSelection: true, force: true });
+        applyWorkflowData(refreshed.data);
         setSaveError("");
+        setLastSavedAt(new Date().toISOString());
+        lastSavedSnapshotRef.current = JSON.stringify(targetForm);
+        latestFormRef.current = targetForm;
+        setHasPendingChanges(false);
+        if (autoSaveTimerRef.current) {
+          clearTimeout(autoSaveTimerRef.current);
+          autoSaveTimerRef.current = null;
+        }
         return true;
       }
       const fallbackError = refreshed?.error || "Failed to refresh workflow";
@@ -103,42 +130,174 @@ export default function WorkflowBuilderPage() {
     } finally {
       setSaving(false);
     }
-  }, [workflowId, syncFromWorkflow, reloadWorkflow, setSaveError, setSaving]);
+  }, [workflowId, applyWorkflowData, reloadWorkflow, setSaveError, setSaving]);
 
-  const handleSaveStep = useCallback(async (stepDraft) => {
-    if (selectedIndex < 0) return false;
-    const nextForm = handleStepChange(selectedIndex, stepDraft);
-    if (!nextForm) return false;
-    return persistWorkflow(nextForm);
-  }, [selectedIndex, handleStepChange, persistWorkflow]);
+  const scheduleAutoSave = useCallback((formSnapshot) => {
+    if (hydratingRef.current) return;
+    const snapshotString = JSON.stringify(formSnapshot ?? latestFormRef.current);
+    if (snapshotString === lastSavedSnapshotRef.current) {
+      setHasPendingChanges(false);
+      return;
+    }
+    setHasPendingChanges(true);
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+    autoSaveTimerRef.current = setTimeout(() => {
+      autoSaveTimerRef.current = null;
+      persistWorkflow(formSnapshot ?? latestFormRef.current, { silent: true });
+    }, AUTO_SAVE_DELAY);
+  }, [persistWorkflow]);
 
-  const handleDeleteSelectedStep = useCallback(async () => {
+  const fetchRuns = useCallback(async ({ signal, silent = false } = {}) => {
+    if (!workflowId) {
+      setRunsState({ loading: false, data: [], error: "Invalid workflow" });
+      return;
+    }
+    if (!silent) {
+      setRunsState((prev) => ({ ...prev, loading: true, error: "" }));
+    }
+    try {
+      const payload = await listWorkflowRuns(workflowId, signal ? { signal } : undefined);
+      const rows = Array.isArray(payload.data) ? payload.data : [];
+      setRunsState({ loading: false, data: rows, error: "" });
+    } catch (error) {
+      if (signal?.aborted) return;
+      const message =
+        error instanceof Error ? error.message : "Failed to load workflow runs";
+      setRunsState({ loading: false, data: [], error: message });
+    }
+  }, [workflowId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchRuns({ signal: controller.signal, silent: false });
+    return () => controller.abort();
+  }, [fetchRuns]);
+
+  const handleDeleteSelectedNode = useCallback(async () => {
     if (selectedIndex < 0) return;
-    const step = form.steps[selectedIndex];
-    const label = step?.label || step?.stepKey || `step ${selectedIndex + 1}`;
+    const node = form.nodes[selectedIndex];
+    const label = node?.label || node?.nodeKey || `node ${selectedIndex + 1}`;
     if (!window.confirm(`Delete ${label}?`)) return;
-    const nextForm = handleRemoveStep(selectedIndex);
+    const nextForm = handleRemoveNode(selectedIndex);
     if (!nextForm) return;
+    latestFormRef.current = nextForm;
     await persistWorkflow(nextForm);
-  }, [form.steps, handleRemoveStep, persistWorkflow, selectedIndex]);
+  }, [form.nodes, handleRemoveNode, persistWorkflow, selectedIndex]);
 
-  const handleAddStepAndEdit = useCallback(() => {
-    handleAddStep();
+  const handleAddNodeAndEdit = useCallback(() => {
+    const nextForm = handleAddNode();
+    if (nextForm) {
+      latestFormRef.current = nextForm;
+      scheduleAutoSave(nextForm);
+    }
     setSaveError("");
-  }, [handleAddStep]);
+  }, [handleAddNode, scheduleAutoSave]);
+
+  const handleNodePartialChange = useCallback((updates) => {
+    if (selectedIndex < 0) return;
+    setSaveError("");
+    const nextForm = handleNodeChange(selectedIndex, updates);
+    if (nextForm) {
+      latestFormRef.current = nextForm;
+      scheduleAutoSave(nextForm);
+    }
+  }, [selectedIndex, handleNodeChange, scheduleAutoSave]);
 
   const handleRefreshWorkflow = useCallback(() => {
     reloadWorkflow().then((result) => {
       if (result?.ok && result.data) {
-        syncFromWorkflow(result.data, { preserveSelection: true, force: true });
+        applyWorkflowData(result.data, { preserveSelection: true, force: true });
       }
     });
-  }, [reloadWorkflow, syncFromWorkflow]);
+  }, [reloadWorkflow, applyWorkflowData]);
 
-  const handleSelectStepFromList = useCallback((index) => {
+  useEffect(() => {
+    latestFormRef.current = form;
+    if (hydratingRef.current) {
+      lastSavedSnapshotRef.current = JSON.stringify(form);
+      setHasPendingChanges(false);
+      hydratingRef.current = false;
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+      }
+    }
+  }, [form]);
+
+  useEffect(() => () => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      if (hasPendingChanges || isSaving) {
+        event.preventDefault();
+        event.returnValue = "Changes you made may not be saved.";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasPendingChanges, isSaving]);
+
+  const onRun = useCallback(async () => {
+    if (!workflowId) return;
+    setViewerOpen(true);
+    const result = await handleRun();
+    if (!result?.ok) {
+      setViewerOpen(false);
+    }
+    fetchRuns({ silent: true });
+  }, [handleRun, workflowId, fetchRuns]);
+
+  const handleSelectNodeFromList = useCallback((index) => {
     setSaveError("");
-    handleSelectStep(index);
-  }, [handleSelectStep]);
+    handleSelectNode(index);
+  }, [handleSelectNode]);
+
+  const selectedNodeKey = selectedNode?.nodeKey ?? "";
+  const nodeEdges = useMemo(() => {
+    if (!selectedNodeKey) return [];
+    return form.edges.filter((edge) => edge.sourceKey === selectedNodeKey);
+  }, [form.edges, selectedNodeKey]);
+
+  const handleNodeEdgesChange = useCallback((nextEdges) => {
+    if (!selectedNodeKey) return;
+    setSaveError("");
+    const nextForm = replaceEdgesForNode(selectedNodeKey, () => nextEdges);
+    if (nextForm) {
+      latestFormRef.current = nextForm;
+      scheduleAutoSave(nextForm);
+    }
+  }, [replaceEdgesForNode, selectedNodeKey, scheduleAutoSave]);
+
+  const handleRefreshRuns = useCallback(() => {
+    fetchRuns({});
+  }, [fetchRuns]);
+
+  useEffect(() => {
+    if (workflowState.data) {
+      hydratingRef.current = true;
+    }
+  }, [workflowState.data]);
+
+  const autosaveChipLabel = useMemo(() => {
+    if (isSaving) return "Saving…";
+    if (hasPendingChanges) return "Unsaved changes";
+    if (lastSavedAt) {
+      return `Saved ${new Date(lastSavedAt).toLocaleTimeString()}`;
+    }
+    return "Saved";
+  }, [isSaving, hasPendingChanges, lastSavedAt]);
+
+  const autosaveChipColor = useMemo(() => {
+    if (isSaving) return "info";
+    if (hasPendingChanges) return "warning";
+    return "success";
+  }, [isSaving, hasPendingChanges]);
 
   if (!workflowId) {
     return (
@@ -195,90 +354,126 @@ export default function WorkflowBuilderPage() {
   return (
     <Box
       sx={{
-        minHeight: "100vh",
+        height: "100%",
         display: "flex",
         flexDirection: "column",
         bgcolor: "background.default",
       }}
     >
       <Box sx={{ px: { xs: 2, md: 4 }, pt: { xs: 2, md: 4 } }}>
-        <Paper
-          elevation={5}
-          sx={{ px: 3, py: 2.5, borderRadius: 3 }}
+        <Stack
+          spacing={2}
+          direction={{ xs: "column", md: "row" }}
+          justifyContent="space-between"
+          alignItems={{ xs: "flex-start", md: "center" }}
         >
-          <Stack spacing={1.5}>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "flex-start", sm: "baseline" }}>
-              <Typography variant="h6" noWrap>
-                {form.title || "Untitled workflow"}
-              </Typography>
-              <Typography variant="caption" color="text.secondary" noWrap>
-                #{workflowId}
-              </Typography>
-            </Stack>
+          <Stack spacing={0.5}>
+            <Typography variant="h5" noWrap>
+              {form.title || "Untitled workflow"}
+            </Typography>
             <Typography variant="body2" color="text.secondary" noWrap>
-              Slug: {form.slug || "-"} · Steps: {form.steps.length} · Start: {form.startStepId || (form.steps[0]?.stepKey ?? "-")}
+              Slug: {form.slug || workflowId || "-"} · Nodes: {form.nodes.length}
             </Typography>
-            <Typography variant="caption" color="text.secondary" noWrap>
-              WS: {wsStatus} · Run status: {runState.status} · Save: {isSaving ? "saving..." : "idle"}
-            </Typography>
-            {(runError || saveError || (loadError && workflowState.data)) ? (
-              <Stack spacing={0.5}>
-                {runError ? <Alert severity="error" variant="filled">{runError}</Alert> : null}
-                {saveError ? <Alert severity="error" variant="filled">{saveError}</Alert> : null}
-                {loadError && workflowState.data ? <Alert severity="warning" variant="filled">{loadError}</Alert> : null}
-              </Stack>
-            ) : null}
             <Stack direction="row" spacing={1}>
-              <Tooltip title="Refresh">
-                <IconButton size="small" onClick={handleRefreshWorkflow}>
-                  <RefreshIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-              <Button variant="contained" size="small" onClick={handleAddStepAndEdit}>
-                New step
-              </Button>
-              <Button
-                variant="outlined"
+              <Chip
                 size="small"
-                color="secondary"
-                onClick={onRun}
-                disabled={runState.status === "starting" || runState.status === "queued"}
-              >
-                Run
-              </Button>
-              <Button variant="outlined" size="small" onClick={() => setViewerOpen(true)}>
-                Viewer
-              </Button>
+                label={`Run: ${runState.status}`}
+                color={
+                  runState.status === "running"
+                    ? "success"
+                    : runState.status === "failed"
+                      ? "error"
+                      : runState.status === "queued" || runState.status === "starting"
+                        ? "warning"
+                        : "default"
+                }
+              />
+              <Chip
+                size="small"
+                label={`WS: ${wsStatus}`}
+                color={wsStatus === "open" ? "success" : wsStatus === "error" ? "error" : "default"}
+              />
+              <Chip
+                size="small"
+                label={autosaveChipLabel}
+                color={autosaveChipColor}
+              />
             </Stack>
           </Stack>
-        </Paper>
+          <Stack direction="row" spacing={1}>
+            <Tooltip title="Refresh workflow data">
+              <IconButton
+                size="small"
+                onClick={() => {
+                  handleRefreshWorkflow();
+                  handleRefreshRuns();
+                }}
+              >
+                <RefreshIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Button
+              variant="outlined"
+              size="small"
+              color="secondary"
+              onClick={onRun}
+              disabled={runState.status === "starting" || runState.status === "queued"}
+            >
+              Run
+            </Button>
+            <Button variant="outlined" size="small" onClick={() => setViewerOpen(true)}>
+              Viewer
+            </Button>
+          </Stack>
+        </Stack>
+        {(runError || saveError || (loadError && workflowState.data)) ? (
+          <Stack spacing={1} sx={{ mt: 2 }}>
+            {runError ? <Alert severity="error" variant="outlined">{runError}</Alert> : null}
+            {saveError ? <Alert severity="error" variant="outlined">{saveError}</Alert> : null}
+            {loadError && workflowState.data ? <Alert severity="warning" variant="outlined">{loadError}</Alert> : null}
+          </Stack>
+        ) : null}
       </Box>
 
-      <Box
-        sx={{
-          flex: 1,
-          display: "flex",
-          flexDirection: { xs: "column", md: "row" },
-          minHeight: 0,
-          mt: { xs: 2, md: 3 },
-        }}
-      >
-        <WorkflowStepList
-          steps={form.steps}
-          selectedIndex={selectedIndex}
-          startStepId={form.startStepId}
-          activeStepKey={activeStepKey}
-          onSelectStep={handleSelectStepFromList}
-          onAddStep={handleAddStepAndEdit}
+      <Box sx={{ flex: 1, overflowY: "auto" }}>
+        <WorkflowRunHistory
+          runs={runsState.data}
+          loading={runsState.loading}
+          error={runsState.error}
+          onRefresh={handleRefreshRuns}
         />
-        <StepDetailPanel
-          step={selectedStep}
-          onSave={handleSaveStep}
-          onDelete={handleDeleteSelectedStep}
-          canDelete={canDeleteStep}
-          saving={isSaving}
-          error={saveError}
-        />
+
+        <Box
+          sx={{
+            flex: 1,
+            display: "flex",
+            flexDirection: { xs: "column", md: "row" },
+            minHeight: 0,
+            mt: { xs: 2, md: 3 },
+          }}
+        >
+          <WorkflowNodeList
+            nodes={form.nodes}
+            selectedIndex={selectedIndex}
+            startNodeId={form.startNodeId}
+            activeNodeKey={activeNodeKey}
+            onSelectNode={handleSelectNodeFromList}
+            onAddNode={handleAddNodeAndEdit}
+          />
+          <NodeDetailPanel
+            node={selectedNode}
+            edges={nodeEdges}
+            allEdges={form.edges}
+            onNodeChange={handleNodePartialChange}
+            onEdgesChange={handleNodeEdgesChange}
+            onDelete={handleDeleteSelectedNode}
+            canDelete={canDeleteNode}
+            saving={isSaving}
+            error={saveError}
+            hasPendingChanges={hasPendingChanges}
+            lastSavedAt={lastSavedAt}
+          />
+        </Box>
       </Box>
 
       <ExecutionViewerModal
@@ -288,7 +483,7 @@ export default function WorkflowBuilderPage() {
         eventLog={eventLog}
         wsStatus={wsStatus}
         runState={runState}
-        steps={viewerSteps}
+        nodes={viewerNodes}
         currentStepIndex={currentStepIndex}
       />
     </Box>
