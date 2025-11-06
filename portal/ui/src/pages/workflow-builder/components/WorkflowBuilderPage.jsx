@@ -16,7 +16,7 @@ import { useWorkflowRun } from "../../../hooks/useWorkflowRun.js";
 import StepEditor from "./StepEditor.jsx";
 import WorkflowCanvas from "./WorkflowCanvas.jsx";
 import { useWorkflowBuilderForm } from "../hooks/useWorkflowBuilderForm.js";
-import { getBuilderContext } from "../utils/workflowBuilder.js";
+import { buildPayload, formatApiError, getBuilderContext } from "../utils/workflowBuilder.js";
 
 export default function WorkflowBuilderPage() {
   const { workflowId } = useMemo(() => getBuilderContext(window.location.pathname), []);
@@ -43,6 +43,8 @@ export default function WorkflowBuilderPage() {
   } = useWorkflowBuilderForm(workflowState.data);
   const [isViewerOpen, setViewerOpen] = useState(false);
   const [isEditorOpen, setEditorOpen] = useState(false);
+  const [isSaving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   const onRun = useCallback(async () => {
     if (!workflowId) return;
@@ -66,21 +68,77 @@ export default function WorkflowBuilderPage() {
   const openEditorForIndex = useCallback((index) => {
     if (typeof index === "number" && index >= 0) {
       handleSelectStep(index);
+      setSaveError("");
       setEditorOpen(true);
     }
-  }, [handleSelectStep]);
+  }, [handleSelectStep, setEditorOpen, setSaveError]);
 
-  const handleDeleteSelectedStep = useCallback(() => {
-    if (selectedIndex >= 0) {
-      handleRemoveStep(selectedIndex);
+  const persistWorkflow = useCallback(async (nextForm) => {
+    if (!workflowId || !nextForm) return false;
+    setSaving(true);
+    setSaveError("");
+    try {
+      const payload = buildPayload(nextForm);
+      const res = await fetch(`/api/workflows/${workflowId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const errorPayload = await res.json().catch(() => ({}));
+        const message = formatApiError(errorPayload);
+        setSaveError(message || "Failed to save workflow");
+        return false;
+      }
+      const response = await res.json().catch(() => null);
+      const workflowData = response?.data;
+      if (workflowData) {
+        syncFromWorkflow(workflowData, { preserveSelection: true, force: true });
+        setSaveError("");
+        return true;
+      }
+      const refreshed = await reloadWorkflow();
+      if (refreshed?.ok && refreshed.data) {
+        syncFromWorkflow(refreshed.data, { preserveSelection: true, force: true });
+        setSaveError("");
+        return true;
+      }
+      const fallbackError = refreshed?.error || "Failed to refresh workflow";
+      setSaveError(fallbackError);
+      return false;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to save workflow";
+      setSaveError(message);
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }, [workflowId, syncFromWorkflow, reloadWorkflow, setSaveError, setSaving]);
+
+  const handleSaveStep = useCallback(async (stepDraft) => {
+    if (selectedIndex < 0) return false;
+    const nextForm = handleStepChange(selectedIndex, stepDraft);
+    if (!nextForm) return false;
+    return persistWorkflow(nextForm);
+  }, [selectedIndex, handleStepChange, persistWorkflow]);
+
+  const handleDeleteSelectedStep = useCallback(async () => {
+    if (selectedIndex < 0) return;
+    const nextForm = handleRemoveStep(selectedIndex);
+    if (!nextForm) return;
+    const ok = await persistWorkflow(nextForm);
+    if (ok) {
       setEditorOpen(false);
     }
-  }, [handleRemoveStep, selectedIndex]);
+  }, [handleRemoveStep, persistWorkflow, selectedIndex, setEditorOpen]);
 
   const handleAddStepAndEdit = useCallback(() => {
     handleAddStep();
-    setTimeout(() => setEditorOpen(true), 0);
-  }, [handleAddStep]);
+    setTimeout(() => {
+      setSaveError("");
+      setEditorOpen(true);
+    }, 0);
+  }, [handleAddStep, setEditorOpen, setSaveError]);
 
   const handleRefreshWorkflow = useCallback(() => {
     reloadWorkflow().then((result) => {
@@ -192,11 +250,12 @@ export default function WorkflowBuilderPage() {
               Slug: {form.slug || "-"} · Steps: {form.steps.length} · Start: {form.startStepId || (form.steps[0]?.stepKey ?? "-")}
             </Typography>
             <Typography variant="caption" color="text.secondary" noWrap>
-              WS: {wsStatus} · Run status: {runState.status}
+              WS: {wsStatus} · Run status: {runState.status} · Save: {isSaving ? "saving..." : "idle"}
             </Typography>
-            {(runError || (loadError && workflowState.data)) ? (
+            {(runError || saveError || (loadError && workflowState.data)) ? (
               <Stack spacing={0.5}>
                 {runError ? <Alert severity="error" variant="filled">{runError}</Alert> : null}
+                {saveError ? <Alert severity="error" variant="filled">{saveError}</Alert> : null}
                 {loadError && workflowState.data ? <Alert severity="warning" variant="filled">{loadError}</Alert> : null}
               </Stack>
             ) : null}
@@ -239,10 +298,12 @@ export default function WorkflowBuilderPage() {
       <StepEditor
         open={isEditorOpen}
         step={selectedStep}
-        onChange={(updates) => handleStepChange(selectedIndex, updates)}
+        onSave={handleSaveStep}
         onDelete={handleDeleteSelectedStep}
         canDelete={canDeleteStep}
         onClose={() => setEditorOpen(false)}
+        saving={isSaving}
+        error={saveError}
       />
     </Box>
   );

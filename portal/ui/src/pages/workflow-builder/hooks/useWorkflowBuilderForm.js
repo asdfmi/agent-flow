@@ -63,17 +63,25 @@ export function useWorkflowBuilderForm(workflow) {
   }, []);
 
   const handleAddStep = useCallback(() => {
+    let nextForm = null;
+    let nextIndex = -1;
     setForm((prev) => {
       const newStep = createEmptyStep(prev.steps);
       const steps = [...prev.steps, newStep];
       const startStepId = prev.startStepId || (steps[0]?.stepKey ?? "");
-      setSelectedIndex(steps.length - 1);
-      return { ...prev, steps, startStepId };
+      nextIndex = steps.length - 1;
+      nextForm = { ...prev, steps, startStepId };
+      return nextForm;
     });
+    if (nextIndex >= 0) {
+      setSelectedIndex(nextIndex);
+    }
+    return nextForm;
   }, []);
 
   const handleRemoveStep = useCallback((index) => {
-    if (index < 0) return;
+    if (index < 0) return null;
+    let nextForm = null;
     setForm((prev) => {
       if (index >= prev.steps.length) return prev;
       const steps = prev.steps.filter((_, i) => i !== index);
@@ -86,8 +94,10 @@ export function useWorkflowBuilderForm(workflow) {
         if (current === index) return Math.min(index, steps.length - 1);
         return current;
       });
-      return { ...prev, steps, startStepId };
+      nextForm = { ...prev, steps, startStepId };
+      return nextForm;
     });
+    return nextForm;
   }, []);
 
   const handleSelectStep = useCallback((index) => {
@@ -95,6 +105,7 @@ export function useWorkflowBuilderForm(workflow) {
   }, []);
 
   const handleStepChange = useCallback((index, updates) => {
+    let nextForm = null;
     setForm((prev) => {
       if (index < 0 || index >= prev.steps.length) return prev;
       const currentStep = prev.steps[index];
@@ -103,8 +114,10 @@ export function useWorkflowBuilderForm(workflow) {
       const startStepId = currentStep.stepKey === prev.startStepId && nextStep.stepKey
         ? nextStep.stepKey
         : prev.startStepId;
-      return { ...prev, steps, startStepId };
+      nextForm = { ...prev, steps, startStepId };
+      return nextForm;
     });
+    return nextForm;
   }, []);
 
   const selectedStep = useMemo(

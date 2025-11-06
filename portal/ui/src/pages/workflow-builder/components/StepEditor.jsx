@@ -1,6 +1,7 @@
 import PropTypes from "prop-types";
 import { useEffect, useState } from "react";
 import {
+  Alert,
   Button,
   Dialog,
   DialogActions,
@@ -33,11 +34,22 @@ function cloneStep(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-export default function StepEditor({ open, step, onChange, onDelete, canDelete, onClose }) {
+export default function StepEditor({
+  open,
+  step,
+  onSave,
+  onDelete,
+  canDelete,
+  onClose,
+  saving,
+  error,
+}) {
   const [draft, setDraft] = useState(cloneStep(step));
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setDraft(cloneStep(step));
+    setIsSaving(false);
   }, [step, open]);
 
   const isEditing = Boolean(draft);
@@ -55,10 +67,20 @@ export default function StepEditor({ open, step, onChange, onDelete, canDelete, 
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!draft) return;
-    onChange(draft);
-    onClose();
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      const result = await onSave(draft);
+      if (result !== false) {
+        onClose();
+      }
+    } catch (error) {
+      console.error("Failed to save step", error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const successConfig = draft?.successConfig;
@@ -73,6 +95,13 @@ export default function StepEditor({ open, step, onChange, onDelete, canDelete, 
           <Typography variant="body2" color="text.secondary">
             No step selected.
           </Typography>
+        ) : null}
+        {error ? (
+          <Alert severity="error">
+            <Typography variant="body2" sx={{ whiteSpace: "pre-line" }}>
+              {error}
+            </Typography>
+          </Alert>
         ) : null}
         <Stack spacing={2}>
           {isEditing ? (
@@ -138,7 +167,7 @@ export default function StepEditor({ open, step, onChange, onDelete, canDelete, 
             variant="outlined"
             color="error"
             onClick={onDelete}
-            disabled={!canDelete || !isEditing}
+            disabled={!canDelete || !isEditing || saving || isSaving}
           >
             Delete step
           </Button>
@@ -150,9 +179,9 @@ export default function StepEditor({ open, step, onChange, onDelete, canDelete, 
           <Button
             variant="contained"
             onClick={handleSave}
-            disabled={!isEditing}
+            disabled={!isEditing || saving || isSaving}
           >
-            Save
+            {saving || isSaving ? "Saving..." : "Save"}
           </Button>
         </Stack>
       </DialogActions>
@@ -171,10 +200,12 @@ StepEditor.propTypes = {
     config: PropTypes.object,
     successConfig: PropTypes.object,
   }),
-  onChange: PropTypes.func.isRequired,
+  onSave: PropTypes.func.isRequired,
   onDelete: PropTypes.func,
   canDelete: PropTypes.bool,
   onClose: PropTypes.func,
+  saving: PropTypes.bool,
+  error: PropTypes.string,
 };
 
 StepEditor.defaultProps = {
@@ -182,6 +213,8 @@ StepEditor.defaultProps = {
   onDelete: null,
   canDelete: true,
   onClose: () => {},
+  saving: false,
+  error: "",
 };
 
 function SuccessConfigEditor({ value, onChange }) {

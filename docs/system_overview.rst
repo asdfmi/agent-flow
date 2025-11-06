@@ -14,6 +14,20 @@ Responsibilities
 - Expose the REST API and WebSocket bridge
 - Render the operator dashboard with React
 
+Technology Stack
+^^^^^^^^^^^^^^^^
+- **Express 5** – Serves REST endpoints under ``/api`` and static UI assets.
+- **Prisma Client** – Provides typed access to the SQLite database for workflows, steps, runs, and metrics.
+- **WebSocket (ws)** – Bridges crawler events to subscribed browsers (`/ws` path).
+- **Vite + React 19 + MUI** – Powers the UI with component-based views and live reload in development.
+
+Runtime Services
+^^^^^^^^^^^^^^^^
+- **Workflow CRUD API** – ``GET/POST/PUT`` routes in ``portal/server/routes/workflows.js``.
+- **Admin API** – General-purpose CRUD interface organised per table in ``portal/server/routes/admin.js``.
+- **Internal event ingestion** – Protected endpoint in ``portal/server/routes/internal.js`` that accepts crawler notifications.
+- **WebSocket gateway** – ``portal/server/ws/index.js`` maps run IDs to connections and broadcasts execution events.
+
 Key directories
 ^^^^^^^^^^^^^^^
 - ``prisma/``: ``Workflow`` / ``WorkflowStep`` models and seed script.
@@ -27,6 +41,13 @@ Responsibilities
 - Launch and manage the lifecycle of Playwright browsers
 - Validate workflow JSON and execute steps sequentially
 - Send step events and screenshots back to the portal
+
+Technology Stack
+^^^^^^^^^^^^^^^^
+- **Playwright** – Controls Chromium browsers headlessly.
+- **Express 5** – Exposes ``POST /run`` for execution requests and ``GET /healthz`` for monitoring.
+- **AJV** – Validates incoming workflows against ``src/schema/workflow.schema.json``.
+- **Node.js EventEmitter** – Coordinates step-level events before forwarding to the portal.
 
 Key directories
 ^^^^^^^^^^^^^^^

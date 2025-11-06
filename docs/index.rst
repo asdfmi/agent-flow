@@ -3,6 +3,43 @@ Browgent Documentation
 
 Discover how Browgent orchestrates browser automation, from the architecture and data model to the events emitted during each run.
 
+Operator Guides
+---------------
+
+.. grid:: 1 2 2 3
+   :gutter: 2
+
+   .. grid-item-card:: Operator Overview
+      :link: operator_overview
+      :link-type: doc
+      :class-card: sd-shadow-sm sd-rounded-3
+
+      Learn the UI entry points, core concepts, and terminology used across the portal.
+
+   .. grid-item-card:: Workflow Builder Guide
+      :link: workflow_builder_guide
+      :link-type: doc
+      :class-card: sd-shadow-sm sd-rounded-3
+
+      Create, configure, and organise workflows with advanced success conditions.
+
+   .. grid-item-card:: Monitoring Workflow Runs
+      :link: run_monitoring
+      :link-type: doc
+      :class-card: sd-shadow-sm sd-rounded-3
+
+      Trigger executions, interpret statuses, and inspect run history.
+
+   .. grid-item-card:: Step Reference
+      :link: step_reference
+      :link-type: doc
+      :class-card: sd-shadow-sm sd-rounded-3
+
+      Review every step type, required fields, and success conditions.
+
+Developer Guides
+----------------
+
 .. grid:: 1 2 2 3
    :gutter: 2
 
@@ -51,6 +88,17 @@ Discover how Browgent orchestrates browser automation, from the architecture and
 .. toctree::
    :hidden:
    :maxdepth: 1
+   :caption: Operator Guides
+
+   operator_overview
+   workflow_builder_guide
+   run_monitoring
+   step_reference
+
+.. toctree::
+   :hidden:
+   :maxdepth: 1
+   :caption: Developer Guides
 
    system_overview
    execution_flow
