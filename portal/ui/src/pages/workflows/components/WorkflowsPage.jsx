@@ -37,19 +37,6 @@ export default function WorkflowsPage() {
     return () => controller.abort();
   }, []);
 
-  if (state.loading) {
-    return (
-      <Container maxWidth="md" sx={{ py: 6 }}>
-        <Stack alignItems="center" spacing={2}>
-          <CircularProgress size={24} />
-          <Typography variant="body2" color="text.secondary">
-            Loading...
-          </Typography>
-        </Stack>
-      </Container>
-    );
-  }
-
   const handleCreate = useCallback(async () => {
     setCreating(true);
     setCreateError("");
@@ -73,6 +60,19 @@ export default function WorkflowsPage() {
       setCreating(false);
     }
   }, []);
+
+  if (state.loading) {
+    return (
+      <Container maxWidth="md" sx={{ py: 6 }}>
+        <Stack alignItems="center" spacing={2}>
+          <CircularProgress size={24} />
+          <Typography variant="body2" color="text.secondary">
+            Loading...
+          </Typography>
+        </Stack>
+      </Container>
+    );
+  }
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>

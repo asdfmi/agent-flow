@@ -1,7 +1,10 @@
 import PropTypes from "prop-types";
 import { AppBar, Toolbar, Typography, Button, Stack } from "@mui/material";
 
-const links = [{ key: "workflows", label: "Workflows", href: "/" }];
+const links = [
+  { key: "workflows", label: "Workflows", href: "/" },
+  { key: "admin", label: "Admin", href: "/admin" },
+];
 
 export default function NavBar({ current } = {}) {
   return (

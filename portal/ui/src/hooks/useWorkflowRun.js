@@ -18,28 +18,35 @@ export function useWorkflowRun(workflowId) {
   const wsRef = useRef(null);
   const currentRunIdRef = useRef(null);
 
-  useEffect(() => {
+  const requestWorkflow = useCallback(async ({ signal } = {}) => {
     if (!normalizedId) {
       setWorkflowState({ loading: false, data: null, error: "Invalid workflow id" });
-      return undefined;
+      return { ok: false, error: "invalid_workflow_id" };
     }
-    const controller = new AbortController();
-    const fetchWorkflow = async () => {
-      setWorkflowState({ loading: true, data: null, error: "" });
-      try {
-        const res = await fetch(`/api/workflows/${normalizedId}`, { signal: controller.signal });
-        if (!res.ok) throw new Error("Failed to load workflow");
-        const payload = await res.json();
-        setWorkflowState({ loading: false, data: payload.data, error: "" });
-      } catch (error) {
-        if (controller.signal.aborted) return;
-        const message = error instanceof Error ? error.message : "Unknown error";
+    setWorkflowState((prev) => ({ ...prev, loading: true, error: "" }));
+    try {
+      const res = await fetch(`/api/workflows/${normalizedId}`, signal ? { signal } : undefined);
+      if (!res.ok) throw new Error("Failed to load workflow");
+      const payload = await res.json();
+      setWorkflowState({ loading: false, data: payload.data, error: "" });
+      return { ok: true, data: payload.data };
+    } catch (error) {
+      if (signal?.aborted) {
+        return { ok: false, aborted: true };
+      }
+      const message = error instanceof Error ? error.message : "Unknown error";
+      if (!signal?.aborted) {
         setWorkflowState({ loading: false, data: null, error: message });
       }
-    };
-    fetchWorkflow();
-    return () => controller.abort();
+      return { ok: false, error: message };
+    }
   }, [normalizedId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    requestWorkflow({ signal: controller.signal });
+    return () => controller.abort();
+  }, [requestWorkflow]);
 
   const ensureWs = useCallback(() => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) return wsRef.current;
@@ -144,5 +151,6 @@ export function useWorkflowRun(workflowId) {
     screenshot,
     currentStepIndex,
     handleRun,
+    reloadWorkflow: requestWorkflow,
   };
 }

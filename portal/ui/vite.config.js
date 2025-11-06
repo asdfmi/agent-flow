@@ -14,6 +14,7 @@ export default defineConfig({
       input: {
         workflows: path.resolve(appDir, "src", "pages", "workflows", "index.html"),
         workflowBuilder: path.resolve(appDir, "src", "pages", "workflow-builder", "index.html"),
+        admin: path.resolve(appDir, "src", "pages", "admin", "index.html"),
       },
     },
   },

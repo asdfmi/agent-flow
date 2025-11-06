@@ -5,6 +5,7 @@ import express from "express";
 import { fileURLToPath } from "url";
 import workflowsRouter from "./routes/workflows.js";
 import internalRouter from "./routes/internal.js";
+import adminRouter from "./routes/admin.js";
 import prisma from "./lib/prisma.js";
 import { initWs } from "./ws/index.js";
 
@@ -15,6 +16,7 @@ const repoRoot = path.resolve(apiDir, "..", "..");
 const clientDistDir = path.join(repoRoot, "portal", "ui", "dist");
 const workflowsHtmlPath = path.join(clientDistDir, "src", "pages", "workflows", "index.html");
 const workflowBuilderHtmlPath = path.join(clientDistDir, "src", "pages", "workflow-builder", "index.html");
+const adminHtmlPath = path.join(clientDistDir, "src", "pages", "admin", "index.html");
 const app = express();
 const port = 3000;
 
@@ -32,11 +34,15 @@ app.get(["/", "/workflows"], (_req, res) => {
 app.get("/workflow/:workflowId", (_req, res) => {
   res.sendFile(workflowBuilderHtmlPath);
 });
+app.get("/admin", (_req, res) => {
+  res.sendFile(adminHtmlPath);
+});
 
 // ===== API =====
 
 app.use("/api/workflows", workflowsRouter);
 app.use("/internal", internalRouter);
+app.use("/api/admin", adminRouter);
 
 app.get("/healthz", (_req, res) => {
   res.json({ ok: true });
