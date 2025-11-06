@@ -21,8 +21,6 @@ import { buildPayload, formatApiError, getBuilderContext } from "../utils/workfl
 import { HttpError } from "../../../api/client.js";
 import { listWorkflowRuns, updateWorkflow as updateWorkflowApi } from "../../../api/workflows.js";
 
-const AUTO_SAVE_DELAY = 1200;
-
 export default function WorkflowBuilderPage() {
 
   const { workflowId } = useMemo(() => getBuilderContext(window.location.pathname), []);
@@ -53,11 +51,9 @@ export default function WorkflowBuilderPage() {
   const [saveError, setSaveError] = useState("");
   const [runsState, setRunsState] = useState({ loading: true, data: [], error: "" });
   const [hasPendingChanges, setHasPendingChanges] = useState(false);
-  const [lastSavedAt, setLastSavedAt] = useState("");
 
   const hydratingRef = useRef(true);
   const latestFormRef = useRef(form);
-  const autoSaveTimerRef = useRef(null);
   const lastSavedSnapshotRef = useRef(JSON.stringify(form));
 
   const isLoading = workflowState.loading && !workflowState.data;
@@ -87,28 +83,18 @@ export default function WorkflowBuilderPage() {
       if (workflowData) {
         applyWorkflowData(workflowData);
         setSaveError("");
-        setLastSavedAt(new Date().toISOString());
         lastSavedSnapshotRef.current = JSON.stringify(targetForm);
         latestFormRef.current = targetForm;
         setHasPendingChanges(false);
-        if (autoSaveTimerRef.current) {
-          clearTimeout(autoSaveTimerRef.current);
-          autoSaveTimerRef.current = null;
-        }
         return true;
       }
       const refreshed = await reloadWorkflow();
       if (refreshed?.ok && refreshed.data) {
         applyWorkflowData(refreshed.data);
         setSaveError("");
-        setLastSavedAt(new Date().toISOString());
         lastSavedSnapshotRef.current = JSON.stringify(targetForm);
         latestFormRef.current = targetForm;
         setHasPendingChanges(false);
-        if (autoSaveTimerRef.current) {
-          clearTimeout(autoSaveTimerRef.current);
-          autoSaveTimerRef.current = null;
-        }
         return true;
       }
       const fallbackError = refreshed?.error || "Failed to refresh workflow";
@@ -131,23 +117,6 @@ export default function WorkflowBuilderPage() {
       setSaving(false);
     }
   }, [workflowId, applyWorkflowData, reloadWorkflow, setSaveError, setSaving]);
-
-  const scheduleAutoSave = useCallback((formSnapshot) => {
-    if (hydratingRef.current) return;
-    const snapshotString = JSON.stringify(formSnapshot ?? latestFormRef.current);
-    if (snapshotString === lastSavedSnapshotRef.current) {
-      setHasPendingChanges(false);
-      return;
-    }
-    setHasPendingChanges(true);
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current);
-    }
-    autoSaveTimerRef.current = setTimeout(() => {
-      autoSaveTimerRef.current = null;
-      persistWorkflow(formSnapshot ?? latestFormRef.current, { silent: true });
-    }, AUTO_SAVE_DELAY);
-  }, [persistWorkflow]);
 
   const fetchRuns = useCallback(async ({ signal, silent = false } = {}) => {
     if (!workflowId) {
@@ -190,10 +159,9 @@ export default function WorkflowBuilderPage() {
     const nextForm = handleAddNode();
     if (nextForm) {
       latestFormRef.current = nextForm;
-      scheduleAutoSave(nextForm);
     }
     setSaveError("");
-  }, [handleAddNode, scheduleAutoSave]);
+  }, [handleAddNode]);
 
   const handleNodePartialChange = useCallback((updates) => {
     if (selectedIndex < 0) return;
@@ -201,9 +169,8 @@ export default function WorkflowBuilderPage() {
     const nextForm = handleNodeChange(selectedIndex, updates);
     if (nextForm) {
       latestFormRef.current = nextForm;
-      scheduleAutoSave(nextForm);
     }
-  }, [selectedIndex, handleNodeChange, scheduleAutoSave]);
+  }, [selectedIndex, handleNodeChange]);
 
   const handleRefreshWorkflow = useCallback(() => {
     reloadWorkflow().then((result) => {
@@ -219,18 +186,11 @@ export default function WorkflowBuilderPage() {
       lastSavedSnapshotRef.current = JSON.stringify(form);
       setHasPendingChanges(false);
       hydratingRef.current = false;
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current);
-        autoSaveTimerRef.current = null;
-      }
+    } else {
+      const snapshotString = JSON.stringify(form);
+      setHasPendingChanges(snapshotString !== lastSavedSnapshotRef.current);
     }
   }, [form]);
-
-  useEffect(() => () => {
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current);
-    }
-  }, []);
 
   useEffect(() => {
     const handleBeforeUnload = (event) => {
@@ -270,9 +230,8 @@ export default function WorkflowBuilderPage() {
     const nextForm = replaceEdgesForNode(selectedNodeKey, () => nextEdges);
     if (nextForm) {
       latestFormRef.current = nextForm;
-      scheduleAutoSave(nextForm);
     }
-  }, [replaceEdgesForNode, selectedNodeKey, scheduleAutoSave]);
+  }, [replaceEdgesForNode, selectedNodeKey]);
 
   const handleRefreshRuns = useCallback(() => {
     fetchRuns({});
@@ -284,20 +243,10 @@ export default function WorkflowBuilderPage() {
     }
   }, [workflowState.data]);
 
-  const autosaveChipLabel = useMemo(() => {
-    if (isSaving) return "Saving…";
-    if (hasPendingChanges) return "Unsaved changes";
-    if (lastSavedAt) {
-      return `Saved ${new Date(lastSavedAt).toLocaleTimeString()}`;
-    }
-    return "Saved";
-  }, [isSaving, hasPendingChanges, lastSavedAt]);
-
-  const autosaveChipColor = useMemo(() => {
-    if (isSaving) return "info";
-    if (hasPendingChanges) return "warning";
-    return "success";
-  }, [isSaving, hasPendingChanges]);
+  const handleSave = useCallback(async () => {
+    if (!hasPendingChanges) return;
+    await persistWorkflow();
+  }, [hasPendingChanges, persistWorkflow]);
 
   if (!workflowId) {
     return (
@@ -393,11 +342,6 @@ export default function WorkflowBuilderPage() {
                 label={`WS: ${wsStatus}`}
                 color={wsStatus === "open" ? "success" : wsStatus === "error" ? "error" : "default"}
               />
-              <Chip
-                size="small"
-                label={autosaveChipLabel}
-                color={autosaveChipColor}
-              />
             </Stack>
           </Stack>
           <Stack direction="row" spacing={1}>
@@ -412,6 +356,14 @@ export default function WorkflowBuilderPage() {
                 <RefreshIcon fontSize="small" />
               </IconButton>
             </Tooltip>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={handleSave}
+              disabled={isSaving || !hasPendingChanges}
+            >
+              Save
+            </Button>
             <Button
               variant="outlined"
               size="small"
@@ -470,8 +422,6 @@ export default function WorkflowBuilderPage() {
             canDelete={canDeleteNode}
             saving={isSaving}
             error={saveError}
-            hasPendingChanges={hasPendingChanges}
-            lastSavedAt={lastSavedAt}
           />
         </Box>
       </Box>

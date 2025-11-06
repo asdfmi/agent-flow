@@ -207,8 +207,6 @@ export default function NodeDetailPanel({
   canDelete,
   saving,
   error,
-  hasPendingChanges,
-  lastSavedAt,
 }) {
   if (!node) {
     return (
@@ -226,20 +224,6 @@ export default function NodeDetailPanel({
       </Box>
     );
   }
-
-  const statusLabel = saving
-    ? "Saving..."
-    : hasPendingChanges
-      ? "Unsaved changes"
-      : lastSavedAt
-        ? `Saved ${new Date(lastSavedAt).toLocaleTimeString()}`
-        : "Saved";
-
-  const statusColor = saving
-    ? "text.secondary"
-    : hasPendingChanges
-      ? "warning.main"
-      : "success.main";
 
   const handleFieldChange = (field) => (event) => {
     onNodeChange({ [field]: event.target.value });
@@ -348,11 +332,13 @@ export default function NodeDetailPanel({
       <Stack spacing={1}>
         <Typography variant="h6">Node details</Typography>
         <Typography variant="body2" color="text.secondary">
-          Changes are saved automatically.
+          Use the Save button to persist your changes.
         </Typography>
-        <Typography variant="caption" color={statusColor}>
-          {statusLabel}
-        </Typography>
+        {saving ? (
+          <Typography variant="caption" color="text.secondary">
+            Saving…
+          </Typography>
+        ) : null}
       </Stack>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
@@ -476,8 +462,6 @@ NodeDetailPanel.propTypes = {
   canDelete: PropTypes.bool,
   saving: PropTypes.bool,
   error: PropTypes.string,
-  hasPendingChanges: PropTypes.bool,
-  lastSavedAt: PropTypes.string,
 };
 
 NodeDetailPanel.defaultProps = {
@@ -487,6 +471,4 @@ NodeDetailPanel.defaultProps = {
   canDelete: true,
   saving: false,
   error: "",
-  hasPendingChanges: false,
-  lastSavedAt: "",
 };
