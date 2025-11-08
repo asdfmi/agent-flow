@@ -139,4 +139,4 @@ Success Conditions
 Variables and Metrics
 ---------------------
 - ``extract_text`` and ``script`` steps can populate workflow variables. Logs and downstream steps can reference them via ``{{ variables.yourKey }}``.
-- Metrics captured during a run appear under **Admin → Workflow run metrics** for historical analysis.
+- Metrics captured during a run are stored in the ``WorkflowRunMetric`` table so you can surface them in your preferred monitoring or reporting tool.

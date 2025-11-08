@@ -53,7 +53,7 @@ Organising Complex Flows
 Saving and Versioning
 ---------------------
 - The **Save** button writes the entire workflow to the portal. Multiple operators editing simultaneously should use **Refresh** to pull the latest version.
-- Each save updates the ``updatedAt`` timestamp visible on the workflow dashboard and in the admin tables.
+- Each save updates the ``updatedAt`` timestamp visible on the workflow dashboard lists.
 - Consider exporting workflows via the API (`GET /api/workflows/:id`) for archival or Git-based version control.
 
 Next Steps

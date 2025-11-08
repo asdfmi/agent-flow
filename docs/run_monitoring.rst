@@ -25,8 +25,8 @@ Live Execution Modal
 After the Run
 -------------
 - Close the modal to return to the builder; the last run status remains visible under the Run button.
-- Visit **Admin → Workflow runs** to review the recent history including timestamps, metrics count, and error messages.
-- Click a run in the admin table to inspect all recorded metrics (`WorkflowRunMetric`) and confirm whether the automation captured the expected data.
+- Use the workflows dashboard to see refreshed timestamps and statuses for each automation once the run completes.
+- Query ``GET /api/workflows/<id>/runs`` if you need a detailed history feed (suitable for exporting to monitoring tools or dashboards).
 
 Troubleshooting
 ---------------

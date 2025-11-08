@@ -24,7 +24,6 @@ Technology Stack
 Runtime Services
 ^^^^^^^^^^^^^^^^
 - **Workflow CRUD API** – ``GET/POST/PUT`` routes in ``portal/server/routes/workflows.js``.
-- **Admin API** – General-purpose CRUD interface organised per table in ``portal/server/routes/admin.js``.
 - **Internal event ingestion** – Protected endpoint in ``portal/server/routes/internal.js`` that accepts crawler notifications.
 - **WebSocket gateway** – ``portal/server/ws/index.js`` maps run IDs to connections and broadcasts execution events.
 

@@ -10,7 +10,6 @@ Portal Entry Points
 -------------------
 - ``/`` – Workflows dashboard with the list of saved automations and the **Create workflow** shortcut.
 - ``/workflow/<id>`` – Workflow Builder for editing steps, running a workflow, and reviewing live execution.
-- ``/admin`` – Data tables that expose workflow metadata, recent runs, and captured metrics (read/write).
 
 Core Concepts
 -------------
@@ -21,7 +20,7 @@ Core Concepts
 
 UI Primer
 ---------
-- **Navigation bar** – Located at the top of every page; jump between *Workflows* and *Admin* views.
+- **Navigation bar** – Located at the top of every page; jump back to the Workflows dashboard at any time.
 - **Workflow cards** – Each card shows title, description, last-updated timestamp, and a button to open the builder.
 - **Builder canvas** – Visual layout of the step sequence. Selecting a step opens additional details and highlights connections.
 - **Step editor** – Modal dialog for editing the selected step. Configure step keys, types, success checks, and advanced routing (``nextStepKey`` / ``exitStepKey`` for loops).
@@ -29,7 +28,7 @@ UI Primer
 
 Roles and Permissions
 ---------------------
-The default deployment does not enforce authentication. If you host Browgent in a multi-tenant environment, front the portal with an authentication proxy and restrict access to ``/admin`` according to your operational policies.
+The default deployment does not enforce authentication. If you host Browgent in a multi-tenant environment, front the portal with an authentication proxy and restrict access to the portal according to your operational policies.
 
 Need More Detail?
 -----------------
