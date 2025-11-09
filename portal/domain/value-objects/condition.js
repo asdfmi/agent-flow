@@ -17,7 +17,8 @@ export default class Condition {
     this.type = requireNonEmptyString(type, 'Condition.type');
     assertInSet(this.type, CONDITION_TYPES, 'Condition.type');
     this.expression = expression === null ? null : requireNonEmptyString(expression, 'Condition.expression');
-    this.parameters = deepFreeze({ ...parameters });
+    const normalizedParameters = parameters && typeof parameters === 'object' ? parameters : {};
+    this.parameters = deepFreeze({ ...normalizedParameters });
     Object.freeze(this);
   }
 

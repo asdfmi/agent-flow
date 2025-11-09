@@ -1,7 +1,8 @@
 import NodeExecution, { NODE_EXECUTION_STATUS } from '../entities/node-execution.js';
 import ExecutionResult from '../value-objects/execution-result.js';
 import Metric from '../value-objects/metric.js';
-import { requireNonEmptyString, assertInstances } from '../utils/validation.js';
+import { requireNonEmptyString } from '../utils/validation.js';
+import { InvalidTransitionError, InvariantViolationError, ValidationError } from '../errors.js';
 
 export const WORKFLOW_EXECUTION_STATUS = Object.freeze({
   NOT_STARTED: 'NotStarted',
@@ -29,30 +30,34 @@ export default class WorkflowExecution {
     this.status = WorkflowExecution.#ensureStatus(status);
     this.startedAt = startedAt ? new Date(startedAt) : null;
     this.completedAt = completedAt ? new Date(completedAt) : null;
-    this.result = result
-      ? result instanceof ExecutionResult
-        ? result
-        : new ExecutionResult(result)
-      : null;
+    this.result = result ? ExecutionResult.from(result) : null;
 
-    const executions = assertInstances(nodeExecutions, NodeExecution, 'WorkflowExecution.nodeExecutions');
+    const executions = WorkflowExecution.#ensureArray(nodeExecutions, 'WorkflowExecution.nodeExecutions')
+      .map((execution) => NodeExecution.from(execution));
     this.nodeExecutions = new Map(executions.map((execution) => [execution.nodeId, execution]));
 
     this.metricDefinitions = new Map();
     this.metrics = [];
-    metrics.forEach((metric) => this.addMetric(metric));
+    WorkflowExecution.#ensureArray(metrics, 'WorkflowExecution.metrics').forEach((metric) => this.addMetric(metric));
   }
 
   static #ensureStatus(status) {
     if (!VALID_WORKFLOW_STATUSES.has(status)) {
-      throw new Error(`Invalid workflow execution status: ${status}`);
+      throw new ValidationError(`Invalid workflow execution status: ${status}`);
     }
     return status;
   }
 
+  static #ensureArray(value, label) {
+    if (!Array.isArray(value)) {
+      throw new InvariantViolationError(`${label} must be an array`);
+    }
+    return value;
+  }
+
   start(timestamp = new Date()) {
     if (this.status !== WORKFLOW_EXECUTION_STATUS.NOT_STARTED) {
-      throw new Error('WorkflowExecution can only start from NotStarted');
+      throw new InvalidTransitionError('WorkflowExecution can only start from NotStarted');
     }
     this.status = WORKFLOW_EXECUTION_STATUS.RUNNING;
     this.startedAt = new Date(timestamp);
@@ -105,12 +110,12 @@ export default class WorkflowExecution {
   }
 
   addMetric(metricInput) {
-    const metric = metricInput instanceof Metric ? metricInput : new Metric(metricInput);
+    const metric = Metric.from(metricInput);
     const key = metric.key;
     if (this.metricDefinitions.has(key)) {
       const definition = this.metricDefinitions.get(key);
       if (definition.type !== metric.type || definition.unit !== metric.unit) {
-        throw new Error(`Metric ${metric.key} changed type/unit`);
+        throw new InvariantViolationError(`Metric ${metric.key} changed type/unit`);
       }
     } else {
       this.metricDefinitions.set(key, { type: metric.type, unit: metric.unit });
@@ -134,7 +139,7 @@ export default class WorkflowExecution {
 
   #assertRunning() {
     if (this.status !== WORKFLOW_EXECUTION_STATUS.RUNNING) {
-      throw new Error('WorkflowExecution is not running');
+      throw new InvalidTransitionError('WorkflowExecution is not running');
     }
   }
 

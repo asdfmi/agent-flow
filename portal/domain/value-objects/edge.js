@@ -32,4 +32,12 @@ export default class Edge {
   get isUnconditional() {
     return this.condition === null;
   }
+
+  static from(value) {
+    if (!value) {
+      throw new ValidationError('Edge input is required');
+    }
+    if (value instanceof Edge) return value;
+    return new Edge(value);
+  }
 }

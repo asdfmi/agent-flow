@@ -1,7 +1,7 @@
 import Node from '../entities/node.js';
 import Edge from '../value-objects/edge.js';
 import DataBinding from '../value-objects/data-binding.js';
-import { assertInvariant, requireNonEmptyString, assertInstances } from '../utils/validation.js';
+import { assertInvariant, requireNonEmptyString } from '../utils/validation.js';
 import { stableStringify } from '../utils/object-utils.js';
 import { hasCycle, computeDegrees } from '../utils/graph.js';
 import { InvariantViolationError } from '../errors.js';
@@ -28,7 +28,10 @@ export default class Workflow {
     this.id = requireNonEmptyString(id, 'Workflow.id');
     this.name = requireNonEmptyString(name, 'Workflow.name');
 
-    this.nodes = assertInstances(nodes, Node, 'Workflow.nodes');
+    if (!Array.isArray(nodes)) {
+      throw new InvariantViolationError('Workflow.nodes must be an array');
+    }
+    this.nodes = nodes.map((node) => Node.from(node));
     assertInvariant(this.nodes.length > 0, 'Workflow must declare at least one node');
     this.nodesById = new Map(this.nodes.map((node) => [node.id, node]));
     assertInvariant(
@@ -36,8 +39,14 @@ export default class Workflow {
       'Workflow node ids must be unique',
     );
 
-    this.edges = assertInstances(edges, Edge, 'Workflow.edges');
-    this.dataBindings = assertInstances(dataBindings, DataBinding, 'Workflow.dataBindings');
+    if (!Array.isArray(edges)) {
+      throw new InvariantViolationError('Workflow.edges must be an array');
+    }
+    this.edges = edges.map((edge) => Edge.from(edge));
+    if (!Array.isArray(dataBindings)) {
+      throw new InvariantViolationError('Workflow.dataBindings must be an array');
+    }
+    this.dataBindings = dataBindings.map((binding) => DataBinding.from(binding));
 
     this.edgesBySource = new Map();
     this.edgesByTarget = new Map();
@@ -45,11 +54,6 @@ export default class Workflow {
     this.#validateEdges();
     this.#validateGraph();
     this.#validateBindings();
-
-    Object.freeze(this.nodes);
-    Object.freeze(this.edges);
-    Object.freeze(this.dataBindings);
-    Object.freeze(this);
   }
 
   #buildEdgeIndexes() {

@@ -12,7 +12,6 @@ export function stableStringify(value) {
     return Object.keys(val)
       .sort()
       .reduce((result, key) => {
-        // eslint-disable-next-line no-param-reassign
         result[key] = val[key];
         return result;
       }, {});

@@ -1,5 +1,6 @@
 import { deepFreeze } from '../utils/object-utils.js';
 import { requireNonEmptyString } from '../utils/validation.js';
+import { ValidationError } from '../errors.js';
 
 export default class DataBinding {
   constructor({
@@ -25,5 +26,13 @@ export default class DataBinding {
       return deepFreeze({ ...transform });
     }
     return transform;
+  }
+
+  static from(value) {
+    if (!value) {
+      throw new ValidationError('DataBinding input is required');
+    }
+    if (value instanceof DataBinding) return value;
+    return new DataBinding(value);
   }
 }

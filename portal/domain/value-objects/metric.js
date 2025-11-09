@@ -1,4 +1,5 @@
 import { requireDefined, requireNonEmptyString } from '../utils/validation.js';
+import { ValidationError } from '../errors.js';
 
 export default class Metric {
   constructor({
@@ -14,5 +15,13 @@ export default class Metric {
     this.unit = unit ? requireNonEmptyString(unit, 'Metric.unit') : null;
     this.timestamp = timestamp instanceof Date ? timestamp : new Date(timestamp);
     Object.freeze(this);
+  }
+
+  static from(value) {
+    if (!value) {
+      throw new ValidationError('Metric input is required');
+    }
+    if (value instanceof Metric) return value;
+    return new Metric(value);
   }
 }

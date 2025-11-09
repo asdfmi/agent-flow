@@ -1,4 +1,5 @@
 import { requireNonEmptyString } from '../utils/validation.js';
+import { InvalidTransitionError, ValidationError } from '../errors.js';
 
 export const NODE_EXECUTION_STATUS = Object.freeze({
   NOT_STARTED: 'NotStarted',
@@ -21,7 +22,7 @@ export default class NodeExecution {
   }) {
     this.nodeId = requireNonEmptyString(nodeId, 'NodeExecution.nodeId');
     if (!VALID_STATUSES.has(status)) {
-      throw new Error(`Invalid NodeExecution status: ${status}`);
+      throw new ValidationError(`Invalid NodeExecution status: ${status}`);
     }
     this.status = status;
     this.startedAt = startedAt ? new Date(startedAt) : null;
@@ -32,7 +33,7 @@ export default class NodeExecution {
 
   start(timestamp = new Date()) {
     if (this.status !== NODE_EXECUTION_STATUS.NOT_STARTED) {
-      throw new Error('NodeExecution can only start from NotStarted');
+      throw new InvalidTransitionError('NodeExecution can only start from NotStarted');
     }
     this.status = NODE_EXECUTION_STATUS.RUNNING;
     this.startedAt = new Date(timestamp);
@@ -40,7 +41,7 @@ export default class NodeExecution {
 
   succeed({ outputs = null, timestamp = new Date() } = {}) {
     if (this.status !== NODE_EXECUTION_STATUS.RUNNING) {
-      throw new Error('NodeExecution can only succeed from Running');
+      throw new InvalidTransitionError('NodeExecution can only succeed from Running');
     }
     this.status = NODE_EXECUTION_STATUS.SUCCEEDED;
     this.completedAt = new Date(timestamp);
@@ -50,7 +51,7 @@ export default class NodeExecution {
 
   fail({ error, timestamp = new Date() } = {}) {
     if (this.status !== NODE_EXECUTION_STATUS.RUNNING) {
-      throw new Error('NodeExecution can only fail from Running');
+      throw new InvalidTransitionError('NodeExecution can only fail from Running');
     }
     this.status = NODE_EXECUTION_STATUS.FAILED;
     this.completedAt = new Date(timestamp);
@@ -62,9 +63,17 @@ export default class NodeExecution {
       this.status === NODE_EXECUTION_STATUS.SUCCEEDED ||
       this.status === NODE_EXECUTION_STATUS.FAILED
     ) {
-      throw new Error('NodeExecution cannot be cancelled after completion');
+      throw new InvalidTransitionError('NodeExecution cannot be cancelled after completion');
     }
     this.status = NODE_EXECUTION_STATUS.CANCELLED;
     this.completedAt = new Date(timestamp);
+  }
+
+  static from(value) {
+    if (!value) {
+      throw new ValidationError('NodeExecution input is required');
+    }
+    if (value instanceof NodeExecution) return value;
+    return new NodeExecution(value);
   }
 }

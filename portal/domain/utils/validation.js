@@ -59,15 +59,3 @@ export function requireDefined(value, label) {
   }
   return value;
 }
-
-export function assertInstances(items, Type, label) {
-  if (!Array.isArray(items)) {
-    throw new InvariantViolationError(`${label} must be an array`);
-  }
-  for (const item of items) {
-    if (!(item instanceof Type)) {
-      throw new InvariantViolationError(`${label} must contain only ${Type.name} instances`);
-    }
-  }
-  return items;
-}
