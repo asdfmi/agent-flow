@@ -2,17 +2,29 @@ import "dotenv/config";
 import express from "express";
 import { registerApi } from "./api.js";
 import { registerStatic } from "./static.js";
+import { buildContainer } from "./container.js";
+import { createWsRunEventHub } from "./infrastructure/ws/run-event-hub.js";
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
 
-registerApi(app);
+const container = buildContainer();
+const runEventHub = createWsRunEventHub();
+
+registerApi(app, {
+  workflowDefinitionService: container.workflowDefinitionService,
+  workflowExecutionService: container.workflowExecutionService,
+  runEventHub,
+  internalSecret: process.env.INTERNAL_SECRET || "",
+});
 registerStatic(app);
 
 app.get("/healthz", (_req, res) => {
   res.json({ ok: true });
 });
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`Static server running → http://localhost:${port}`);
 });
+
+runEventHub.attach(server);
