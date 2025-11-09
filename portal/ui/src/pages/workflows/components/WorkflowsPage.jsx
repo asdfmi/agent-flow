@@ -53,7 +53,7 @@ export default function WorkflowsPage() {
     setCreateError("");
     try {
       const payload = await createDraftWorkflow();
-      const target = payload?.data?.slug || payload?.data?.id;
+      const target = payload?.data?.id;
       if (target) {
         window.location.href = `/workflow/${encodeURIComponent(String(target))}`;
         return;
@@ -128,12 +128,12 @@ export default function WorkflowsPage() {
                   variant="outlined"
                   sx={{ p: 2, cursor: "pointer", "&:hover": { boxShadow: 4 } }}
                   onClick={() => {
-                    const target = workflow.slug || String(workflow.id);
+                    const target = String(workflow.id);
                     window.location.href = `/workflow/${encodeURIComponent(target)}`;
                   }}
                 >
                   <Stack spacing={1}>
-                    <Typography variant="h6">{workflow.title || workflow.slug}</Typography>
+                    <Typography variant="h6">{workflow.title || workflow.id}</Typography>
                     {workflow.description ? (
                       <Typography variant="body2" color="text.secondary">
                         {workflow.description}
@@ -148,7 +148,7 @@ export default function WorkflowsPage() {
                         variant="contained"
                         onClick={(event) => {
                           event.stopPropagation();
-                          const target = workflow.slug || String(workflow.id);
+                          const target = String(workflow.id);
                           window.location.href = `/workflow/${encodeURIComponent(target)}`;
                         }}
                       >

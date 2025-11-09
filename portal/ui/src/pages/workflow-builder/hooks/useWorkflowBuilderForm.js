@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createEmptyNode, toEditableEdge, toEditableNode } from "../utils/workflowBuilder.js";
 
 const EMPTY_FORM = {
-  slug: "",
   title: "",
   description: "",
   startNodeId: "",
@@ -33,7 +32,6 @@ export function useWorkflowBuilderForm(workflow) {
 
     lastSyncRef.current = { id: nextWorkflow.id, updatedAt: nextWorkflow.updatedAt };
     setForm({
-      slug: nextWorkflow.slug ?? "",
       title: nextWorkflow.title ?? "",
       description: nextWorkflow.description ?? "",
       startNodeId: nextWorkflow.startNodeId ?? "",

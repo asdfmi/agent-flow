@@ -321,7 +321,7 @@ export default function WorkflowBuilderPage() {
               {form.title || "Untitled workflow"}
             </Typography>
             <Typography variant="body2" color="text.secondary" noWrap>
-              Slug: {form.slug || workflowId || "-"} · Nodes: {form.nodes.length}
+              Workflow ID: {workflowId || "-"} · Nodes: {form.nodes.length}
             </Typography>
             <Stack direction="row" spacing={1}>
               <Chip

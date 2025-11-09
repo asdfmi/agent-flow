@@ -109,14 +109,20 @@ export default class PrismaWorkflowExecutionRepository extends WorkflowExecution
         id: true,
         workflowId: true,
         status: true,
+        startedAt: true,
+        completedAt: true,
         updatedAt: true,
+        result: true,
       },
     });
     return rows.map((row) => ({
       id: row.id,
       workflowId: row.workflowId,
       status: row.status,
+      startedAt: row.startedAt ?? null,
+      completedAt: row.completedAt ?? null,
       updatedAt: row.updatedAt ?? null,
+      result: row.result ?? null,
     }));
   }
 }

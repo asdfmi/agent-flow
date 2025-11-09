@@ -5,9 +5,9 @@ export function getBuilderContext(pathname) {
     .split("/")
     .filter(Boolean);
   if (segments.length === 2 && segments[0] === "workflow") {
-    const slug = segments[1];
-    if (slug) {
-      return { workflowId: decodeURIComponent(slug) };
+    const workflowId = segments[1];
+    if (workflowId) {
+      return { workflowId: decodeURIComponent(workflowId) };
     }
   }
   return { workflowId: null };
@@ -154,12 +154,10 @@ export function parseNumber(input) {
 
 export function buildPayload(form) {
   const errors = [];
-  const slug = String(form.slug || "").trim();
   const title = String(form.title || "").trim();
   const description = String(form.description || "").trim();
   const startNodeId = String(form.startNodeId || "").trim();
 
-  if (!slug) errors.push("Slug is required");
   if (!title) errors.push("Title is required");
 
   const nodes = [];
@@ -275,7 +273,6 @@ export function buildPayload(form) {
   }
 
   return {
-    slug,
     title,
     description: description || null,
     startNodeId: startNodeId || null,
