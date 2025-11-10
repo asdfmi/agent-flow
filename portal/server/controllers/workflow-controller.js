@@ -1,4 +1,4 @@
-import { ValidationError } from '#domain/errors.js';
+import { ValidationError } from '@agent-flow/domain/errors.js';
 import { randomUUID } from 'node:crypto';
 
 export default class WorkflowController {
@@ -7,7 +7,7 @@ export default class WorkflowController {
     this.workflowExecutionService = workflowExecutionService;
 
     this.listWorkflows = this.listWorkflows.bind(this);
-    this.createDraftWorkflow = this.createDraftWorkflow.bind(this);
+    this.createWorkflow = this.createWorkflow.bind(this);
     this.getWorkflow = this.getWorkflow.bind(this);
     this.updateWorkflow = this.updateWorkflow.bind(this);
     this.listRuns = this.listRuns.bind(this);
@@ -19,23 +19,9 @@ export default class WorkflowController {
     res.json({ data: rows.map(formatWorkflowSummary) });
   }
 
-  async createDraftWorkflow(req, res) {
+  async createWorkflow(req, res) {
     const workflowId = randomUUID();
-    const basePayload = {
-      title: req.body?.title || 'Untitled Workflow',
-      description: req.body?.description || '',
-      startNodeId: 'node_1',
-      nodes: [
-        {
-          nodeKey: 'node_1',
-          label: 'Navigate',
-          type: 'navigate',
-          config: { url: '', waitUntil: '' },
-        },
-      ],
-      edges: [],
-    };
-    const definitionInput = buildDefinitionPayload(workflowId, basePayload);
+    const definitionInput = buildDefinitionPayload(workflowId, req.body || {});
     const created = await this.workflowFactory.createWorkflowDefinition(definitionInput);
     res.status(201).json({ data: formatWorkflowDetail(created) });
   }

@@ -17,6 +17,9 @@ export function registerStatic(app) {
   app.get('/', (_req, res) => {
     res.sendFile(staticPaths.workflows);
   });
+  app.get('/workflow/new', (_req, res) => {
+    res.sendFile(staticPaths.workflowBuilder);
+  });
   app.get('/workflow/:workflowId', (_req, res) => {
     res.sendFile(staticPaths.workflowBuilder);
   });

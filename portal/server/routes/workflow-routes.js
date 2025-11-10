@@ -7,7 +7,7 @@ export default function createWorkflowRouter({ workflowFactory, workflowExecutio
   const router = express.Router();
 
   router.get('/workflows', asyncHandler(controller.listWorkflows));
-  router.post('/workflows/draft', asyncHandler(controller.createDraftWorkflow));
+  router.post('/workflows', asyncHandler(controller.createWorkflow));
   router.get('/workflows/:workflowId', asyncHandler(controller.getWorkflow));
   router.put('/workflows/:workflowId', asyncHandler(controller.updateWorkflow));
   router.get('/workflows/:workflowId/runs', asyncHandler(controller.listRuns));

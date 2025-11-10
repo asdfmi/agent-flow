@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "workspaces": [
+    "domain",
     "portal",
     "runner"
   ],
@@ -13,9 +14,6 @@
     "dev:portal:ui": "pnpm --dir portal run dev:ui",
     "dev:runner": "pnpm --dir runner run dev:runner",
     "dev": "concurrently \"pnpm run dev:portal:ui\" \"pnpm run dev:portal\" \"pnpm run dev:runner\""
-  },
-  "imports": {
-    "#domain/*": "./domain/*"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

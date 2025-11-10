@@ -1,4 +1,4 @@
-import { ValidationError, NotFoundError, InvariantViolationError } from '#domain/errors.js';
+import { ValidationError, NotFoundError, InvariantViolationError } from '@agent-flow/domain/errors.js';
 
 export function asyncHandler(handler) {
   return (req, res, next) => {

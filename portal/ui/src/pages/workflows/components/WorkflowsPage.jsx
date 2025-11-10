@@ -10,17 +10,15 @@ import {
   Button,
 } from "@mui/material";
 import { HttpError } from "../../../api/client.js";
-import {
-  createDraftWorkflow,
-  listWorkflows,
-} from "../../../api/workflows.js";
+import { listWorkflows } from "../../../api/workflows.js";
 
 const initialState = { loading: true, data: [], error: "" };
 
 export default function WorkflowsPage() {
   const [state, setState] = useState(initialState);
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState("");
+  const handleCreate = useCallback(() => {
+    window.location.href = "/workflow/new";
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -46,33 +44,6 @@ export default function WorkflowsPage() {
     };
     load();
     return () => controller.abort();
-  }, []);
-
-  const handleCreate = useCallback(async () => {
-    setCreating(true);
-    setCreateError("");
-    try {
-      const payload = await createDraftWorkflow();
-      const target = payload?.data?.id;
-      if (target) {
-        window.location.href = `/workflow/${encodeURIComponent(String(target))}`;
-        return;
-      }
-      throw new Error("draft workflow id missing");
-    } catch (error) {
-      let message = "Unknown error";
-      if (error instanceof HttpError) {
-        const details = error.data && typeof error.data === "object"
-          ? (error.data.error || error.data.message)
-          : null;
-        message = details || error.message;
-      } else if (error instanceof Error) {
-        message = error.message;
-      }
-      setCreateError(message);
-    } finally {
-      setCreating(false);
-    }
   }, []);
 
   if (state.loading) {
@@ -107,14 +78,12 @@ export default function WorkflowsPage() {
             <Button
               variant="contained"
               onClick={handleCreate}
-              disabled={creating}
               sx={{ alignSelf: { xs: "stretch", sm: "center" } }}
             >
-              {creating ? "Creating..." : "Create workflow"}
+              Create workflow
             </Button>
           </Stack>
           {state.error ? <Alert severity="error">{state.error}</Alert> : null}
-          {createError ? <Alert severity="error">{createError}</Alert> : null}
           <Divider />
           {state.data.length === 0 ? (
             <Typography variant="body2" color="text.secondary">

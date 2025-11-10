@@ -5,12 +5,15 @@ export function getBuilderContext(pathname) {
     .split("/")
     .filter(Boolean);
   if (segments.length === 2 && segments[0] === "workflow") {
-    const workflowId = segments[1];
-    if (workflowId) {
-      return { workflowId: decodeURIComponent(workflowId) };
+    const identifier = segments[1];
+    if (identifier === "new") {
+      return { workflowId: null, isNew: true };
+    }
+    if (identifier) {
+      return { workflowId: decodeURIComponent(identifier), isNew: false };
     }
   }
-  return { workflowId: null };
+  return { workflowId: null, isNew: false };
 }
 
 export function createEmptyNode(existingNodes) {

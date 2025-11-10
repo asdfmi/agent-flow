@@ -3,7 +3,7 @@ import {
   Edge,
   DataBinding,
   NodeFactory,
-} from '#domain/index.js';
+} from '@agent-flow/domain';
 
 export function toDomainWorkflow({
   workflowRecord,

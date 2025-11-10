@@ -4,8 +4,12 @@ export function listWorkflows(options = {}) {
   return request("/api/workflows", options);
 }
 
-export function createDraftWorkflow(options = {}) {
-  return request("/api/workflows/draft", { ...options, method: "POST" });
+export function createWorkflow(payload, options = {}) {
+  return request("/api/workflows", {
+    ...options,
+    method: "POST",
+    json: payload,
+  });
 }
 
 export function getWorkflow(id, options = {}) {

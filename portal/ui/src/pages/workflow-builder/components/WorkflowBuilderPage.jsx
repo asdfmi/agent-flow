@@ -19,11 +19,16 @@ import WorkflowRunHistory from "./WorkflowRunHistory.jsx";
 import { useWorkflowBuilderForm } from "../hooks/useWorkflowBuilderForm.js";
 import { buildPayload, formatApiError, getBuilderContext } from "../utils/workflowBuilder.js";
 import { HttpError } from "../../../api/client.js";
-import { listWorkflowRuns, updateWorkflow as updateWorkflowApi } from "../../../api/workflows.js";
+import {
+  createWorkflow as createWorkflowApi,
+  listWorkflowRuns,
+  updateWorkflow as updateWorkflowApi,
+} from "../../../api/workflows.js";
 
 export default function WorkflowBuilderPage() {
-
-  const { workflowId } = useMemo(() => getBuilderContext(window.location.pathname), []);
+  const builderContext = useMemo(() => getBuilderContext(window.location.pathname), []);
+  const [workflowId, setWorkflowId] = useState(builderContext.workflowId ?? null);
+  const isNewWorkflow = !workflowId;
   const {
     workflowState,
     runState,
@@ -33,7 +38,7 @@ export default function WorkflowBuilderPage() {
     currentStepIndex,
     handleRun,
     reloadWorkflow,
-  } = useWorkflowRun(workflowId);
+  } = useWorkflowRun(workflowId, { enabled: Boolean(workflowId) });
 
   const {
     form,
@@ -73,11 +78,32 @@ export default function WorkflowBuilderPage() {
 
   const persistWorkflow = useCallback(async (formOverride, { silent = false } = {}) => {
     const targetForm = formOverride ?? latestFormRef.current;
-    if (!workflowId || !targetForm) return false;
+    if (!targetForm) return false;
     setSaving(true);
     if (!silent) setSaveError("");
     try {
       const payload = buildPayload(targetForm);
+      if (!workflowId) {
+        const response = await createWorkflowApi(payload);
+        const workflowData = response?.data;
+        if (workflowData?.id) {
+          setWorkflowId(workflowData.id);
+          window.history.replaceState(
+            null,
+            "",
+            `/workflow/${encodeURIComponent(String(workflowData.id))}`,
+          );
+        }
+        if (workflowData) {
+          applyWorkflowData(workflowData);
+          setSaveError("");
+          lastSavedSnapshotRef.current = JSON.stringify(targetForm);
+          latestFormRef.current = targetForm;
+          setHasPendingChanges(false);
+          return true;
+        }
+        throw new Error("Failed to create workflow");
+      }
       const response = await updateWorkflowApi(workflowId, payload);
       const workflowData = response?.data;
       if (workflowData) {
@@ -120,7 +146,7 @@ export default function WorkflowBuilderPage() {
 
   const fetchRuns = useCallback(async ({ signal, silent = false } = {}) => {
     if (!workflowId) {
-      setRunsState({ loading: false, data: [], error: "Invalid workflow" });
+      setRunsState({ loading: false, data: [], error: "" });
       return;
     }
     if (!silent) {
@@ -173,12 +199,13 @@ export default function WorkflowBuilderPage() {
   }, [selectedIndex, handleNodeChange]);
 
   const handleRefreshWorkflow = useCallback(() => {
+    if (!workflowId) return;
     reloadWorkflow().then((result) => {
       if (result?.ok && result.data) {
         applyWorkflowData(result.data, { preserveSelection: true, force: true });
       }
     });
-  }, [reloadWorkflow, applyWorkflowData]);
+  }, [workflowId, reloadWorkflow, applyWorkflowData]);
 
   useEffect(() => {
     latestFormRef.current = form;
@@ -247,22 +274,6 @@ export default function WorkflowBuilderPage() {
     if (!hasPendingChanges) return;
     await persistWorkflow();
   }, [hasPendingChanges, persistWorkflow]);
-
-  if (!workflowId) {
-    return (
-      <Box
-        sx={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          px: 3,
-        }}
-      >
-        <Alert severity="error">Invalid workflow path. Please return to the list.</Alert>
-      </Box>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -352,6 +363,7 @@ export default function WorkflowBuilderPage() {
                   handleRefreshWorkflow();
                   handleRefreshRuns();
                 }}
+                disabled={!workflowId}
               >
                 <RefreshIcon fontSize="small" />
               </IconButton>
@@ -369,15 +381,29 @@ export default function WorkflowBuilderPage() {
               size="small"
               color="secondary"
               onClick={onRun}
-              disabled={runState.status === "starting" || runState.status === "queued"}
+              disabled={
+                !workflowId ||
+                runState.status === "starting" ||
+                runState.status === "queued"
+              }
             >
               Run
             </Button>
-            <Button variant="outlined" size="small" onClick={() => setViewerOpen(true)}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setViewerOpen(true)}
+              disabled={!workflowId}
+            >
               Viewer
             </Button>
           </Stack>
         </Stack>
+        {isNewWorkflow ? (
+          <Alert severity="info" variant="outlined" sx={{ mt: 2 }}>
+            This workflow is not saved yet. Add nodes and press Save to create it.
+          </Alert>
+        ) : null}
         {(runError || saveError || (loadError && workflowState.data)) ? (
           <Stack spacing={1} sx={{ mt: 2 }}>
             {runError ? <Alert severity="error" variant="outlined">{runError}</Alert> : null}

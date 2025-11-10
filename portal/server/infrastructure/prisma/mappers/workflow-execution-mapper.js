@@ -3,7 +3,7 @@ import {
   NodeExecution,
   Metric,
   ExecutionResult,
-} from '#domain/index.js';
+} from '@agent-flow/domain';
 
 export function toDomainWorkflowExecution(record) {
   if (!record) return null;

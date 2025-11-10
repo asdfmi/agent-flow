@@ -33,8 +33,13 @@ importers:
         specifier: ^4.19.1
         version: 4.20.6
 
+  domain: {}
+
   portal:
     dependencies:
+      '@agent-flow/domain':
+        specifier: workspace:*
+        version: link:../domain
       '@emotion/react':
         specifier: ^11.14.0
         version: 11.14.0(@types/react@19.2.2)(react@19.2.0)
@@ -81,6 +86,9 @@ importers:
 
   runner:
     dependencies:
+      '@agent-flow/domain':
+        specifier: workspace:*
+        version: link:../domain
       dotenv:
         specifier: ^16.4.5
         version: 16.6.1

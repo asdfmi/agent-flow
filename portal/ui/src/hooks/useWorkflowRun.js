@@ -4,14 +4,20 @@ import { getWorkflow, runWorkflow } from "../api/workflows.js";
 
 const MAX_LOG_LENGTH = 100;
 
-export function useWorkflowRun(workflowId) {
+export function useWorkflowRun(workflowId, { enabled = true } = {}) {
+  const isEnabled = Boolean(enabled);
   const normalizedId = useMemo(() => {
+    if (!isEnabled) return null;
     if (workflowId == null) return null;
     const value = String(workflowId).trim();
     return value ? value : null;
-  }, [workflowId]);
+  }, [workflowId, isEnabled]);
 
-  const [workflowState, setWorkflowState] = useState({ loading: true, data: null, error: "" });
+  const [workflowState, setWorkflowState] = useState({
+    loading: isEnabled,
+    data: null,
+    error: "",
+  });
   const [runState, setRunState] = useState({ status: "idle", runId: null, error: "" });
   const [wsStatus, setWsStatus] = useState("idle");
   const [eventLog, setEventLog] = useState([]);
@@ -21,6 +27,10 @@ export function useWorkflowRun(workflowId) {
   const currentRunIdRef = useRef(null);
 
   const requestWorkflow = useCallback(async ({ signal } = {}) => {
+    if (!isEnabled) {
+      setWorkflowState({ loading: false, data: null, error: "" });
+      return { ok: false, error: "workflow_disabled" };
+    }
     if (!normalizedId) {
       setWorkflowState({ loading: false, data: null, error: "Invalid workflow identifier" });
       return { ok: false, error: "invalid_workflow_identifier" };
@@ -48,13 +58,17 @@ export function useWorkflowRun(workflowId) {
       }
       return { ok: false, error: message };
     }
-  }, [normalizedId]);
+  }, [normalizedId, isEnabled]);
 
   useEffect(() => {
+    if (!isEnabled) {
+      setWorkflowState({ loading: false, data: null, error: "" });
+      return undefined;
+    }
     const controller = new AbortController();
     requestWorkflow({ signal: controller.signal });
     return () => controller.abort();
-  }, [requestWorkflow]);
+  }, [requestWorkflow, isEnabled]);
 
   const ensureWs = useCallback(() => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) return wsRef.current;
@@ -106,7 +120,7 @@ export function useWorkflowRun(workflowId) {
   }, []);
 
   const handleRun = useCallback(async () => {
-    if (!normalizedId) return { ok: false };
+    if (!isEnabled || !normalizedId) return { ok: false };
     setRunState({ status: "starting", runId: null, error: "" });
     setEventLog([]);
     setScreenshot("");
@@ -152,7 +166,7 @@ export function useWorkflowRun(workflowId) {
       setRunState({ status: "idle", runId: null, error: message });
       return { ok: false, error: message };
     }
-  }, [ensureWs, normalizedId]);
+  }, [ensureWs, normalizedId, isEnabled]);
 
   return {
     workflowState,

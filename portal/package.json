@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@agent-flow/domain": "workspace:*",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/material": "^7.3.4",
@@ -24,9 +25,6 @@
   "scripts": {
     "dev:api": "tsx watch server/index.js",
     "dev:ui": "vite build --watch --mode development --config ui/vite.config.js"
-  },
-  "imports": {
-    "#domain/*": "../domain/*"
   },
   "packageManager": "pnpm@10.20.0"
 }

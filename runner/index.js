@@ -6,7 +6,7 @@ import {
   ValidationError,
   InvariantViolationError,
   RunWorkflowUseCase,
-} from '#domain/index.js';
+} from '@agent-flow/domain';
 import { postEvent } from './infrastructure/portal/http-run-event-publisher.js';
 import PlaywrightSession from './infrastructure/browser/playwright-session.js';
 import RunEventDispatcher from './infrastructure/portal/ws-run-event-dispatcher.js';

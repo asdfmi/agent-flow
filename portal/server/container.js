@@ -1,7 +1,7 @@
 import {
   WorkflowFactory,
   WorkflowExecutionService,
-} from '#domain/index.js';
+} from '@agent-flow/domain';
 import {
   PrismaWorkflowRepository,
   PrismaWorkflowExecutionRepository,
