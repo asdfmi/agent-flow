@@ -407,7 +407,15 @@ export default function WorkflowBuilderPage() {
         {(runError || saveError || (loadError && workflowState.data)) ? (
           <Stack spacing={1} sx={{ mt: 2 }}>
             {runError ? <Alert severity="error" variant="outlined">{runError}</Alert> : null}
-            {saveError ? <Alert severity="error" variant="outlined">{saveError}</Alert> : null}
+            {saveError ? (
+              <Alert severity="error" variant="outlined">
+                {saveError.split(/\n+/).map((line, index) => (
+                  <Typography key={`${line}-${index}`} component="div" variant="body2">
+                    {line}
+                  </Typography>
+                ))}
+              </Alert>
+            ) : null}
             {loadError && workflowState.data ? <Alert severity="warning" variant="outlined">{loadError}</Alert> : null}
           </Stack>
         ) : null}
@@ -432,6 +440,7 @@ export default function WorkflowBuilderPage() {
         >
           <WorkflowNodeList
             nodes={form.nodes}
+            edges={form.edges}
             selectedIndex={selectedIndex}
             startNodeId={form.startNodeId}
             activeNodeKey={activeNodeKey}

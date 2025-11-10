@@ -1,5 +1,6 @@
 export const NODE_TYPES = [
   "navigate",
+  "if",
   "wait",
   "scroll",
   "click",

@@ -65,7 +65,7 @@ export default function WorkflowRunHistory({ runs, loading, error, onRefresh }) 
           }}
         >
           <Typography variant="body2" color="text.secondary">
-            No runs recorded yet. Trigger a run to see history here.
+            No runs recorded yet.
           </Typography>
         </Stack>
       ) : (

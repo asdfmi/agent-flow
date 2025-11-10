@@ -10,8 +10,15 @@ import ExtractTextConfigFields from "./ExtractTextConfigFields.jsx";
 import FallbackConfigFields from "./FallbackConfigFields.jsx";
 import { getDefaultConfig } from "../utils/workflowBuilder.js";
 
+function IfConfigPlaceholder() {
+  return (
+    <FallbackConfigFields description="If nodes are fully configured via the condition editor above." />
+  );
+}
+
 const COMPONENT_BY_TYPE = {
   navigate: NavigateConfigFields,
+  if: IfConfigPlaceholder,
   scroll: ScrollConfigFields,
   click: ClickConfigFields,
   fill: FillConfigFields,

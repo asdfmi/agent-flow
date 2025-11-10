@@ -55,6 +55,8 @@ export function getDefaultConfig(type) {
   switch (type) {
     case "navigate":
       return { url: "", waitUntil: "" };
+    case "if":
+      return {};
     case "scroll":
       return { dx: 0, dy: 600 };
     case "click":
@@ -229,6 +231,11 @@ export function buildPayload(form) {
     });
   });
 
+  const nodeKeys = nodes.map((node) => node.nodeKey).filter(Boolean);
+  if (hasCycle(nodeKeys, edges)) {
+    errors.push("Workflow cannot contain loops or cyclic branches.");
+  }
+
   if (errors.length > 0) {
     throw new Error(errors.join("\n"));
   }
@@ -278,6 +285,38 @@ export function generateEdgeKey(existingKeys) {
     candidate = `edge_${index}`;
   }
   return candidate;
+}
+
+function hasCycle(nodeKeys, edges) {
+  if (nodeKeys.length === 0) return false;
+  const adjacency = new Map(nodeKeys.map((key) => [key, []]));
+  edges.forEach((edge) => {
+    if (!edge || !edge.sourceKey || !edge.targetKey) return;
+    if (!adjacency.has(edge.sourceKey) || !adjacency.has(edge.targetKey)) return;
+    adjacency.get(edge.sourceKey).push(edge.targetKey);
+  });
+  const visiting = new Set();
+  const visited = new Set();
+
+  const dfs = (node) => {
+    if (visiting.has(node)) return true;
+    if (visited.has(node)) return false;
+    visiting.add(node);
+    const neighbors = adjacency.get(node) ?? [];
+    for (const next of neighbors) {
+      if (dfs(next)) return true;
+    }
+    visiting.delete(node);
+    visited.add(node);
+    return false;
+  };
+
+  for (const node of nodeKeys) {
+    if (dfs(node)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function cleanConfigForType(_type, config) {

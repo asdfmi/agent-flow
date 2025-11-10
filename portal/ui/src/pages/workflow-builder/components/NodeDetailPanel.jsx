@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import {
   Alert,
@@ -9,13 +10,15 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { NODE_TYPES } from "../constants.js";
+import { NODE_TYPES, BRANCH_CONDITION_TYPES } from "../constants.js";
 import {
   getDefaultConfig,
   generateEdgeKey,
+  createDefaultBranchCondition,
+  getBranchConditionType,
+  parseNumber,
 } from "../utils/workflowBuilder.js";
 import NodeConfigFields from "./NodeConfigFields.jsx";
-import IfConfigFields from "./IfConfigFields.jsx";
 
 export default function NodeDetailPanel({
   node,
@@ -58,6 +61,10 @@ export default function NodeDetailPanel({
     onEdgesChange([]);
   };
 
+  const isIfNode = node.type === "if";
+  const [ifBranches, setIfBranches] = useState([]);
+  const [ifElseTarget, setIfElseTarget] = useState("");
+
   const edgeKeys = (allEdges || [])
     .map((edge) => String(edge.edgeKey || "").trim())
     .filter(Boolean);
@@ -79,60 +86,134 @@ export default function NodeDetailPanel({
       condition: edge.condition,
       priority: typeof edge.priority === "number" ? edge.priority : index,
     }));
+  useEffect(() => {
+    if (!isIfNode) {
+      setIfBranches([]);
+      setIfElseTarget("");
+      return;
+    }
+    if (conditionalEdges.length > 0) {
+      setIfBranches(conditionalEdges);
+    } else if (conditionalEdges.length === 0 && ifBranches.length === 0) {
+      setIfBranches([
+        {
+          edgeKey: "",
+          targetKey: "",
+          condition: createDefaultBranchCondition("visible"),
+          priority: 0,
+        },
+      ]);
+    }
+    setIfElseTarget(defaultTarget ?? "");
+  }, [isIfNode, conditionalEdges, defaultTarget, ifBranches.length]);
 
-  const emitEdges = (conditionals, defaultTargetKey) => {
+  const ensureKey = (usedKeys, edgeKey) => {
+    let key = String(edgeKey || "").trim();
+    if (!key || usedKeys.has(key)) {
+      key = generateEdgeKey([...usedKeys]);
+    }
+    usedKeys.add(key);
+    return key;
+  };
+
+  const emitDefaultEdge = (targetKey) => {
+    const trimmedDefault = String(targetKey || "").trim();
+    if (!trimmedDefault) {
+      onEdgesChange([]);
+      return;
+    }
     const usedKeys = new Set(edgeKeys);
-    const prepared = [];
-
-    const ensureKey = (edgeKey) => {
-      let key = String(edgeKey || "").trim();
-      if (!key || usedKeys.has(key)) {
-        key = generateEdgeKey([...usedKeys]);
-      }
-      usedKeys.add(key);
-      return key;
-    };
-
-    (conditionals || []).forEach((entry, index) => {
-      const key = ensureKey(entry.edgeKey);
-      const targetKey = String(entry.targetKey || "").trim();
-      if (!targetKey) return;
-      prepared.push({
-        edgeKey: key,
-        targetKey,
-        condition: entry.condition && typeof entry.condition === "object" ? entry.condition : null,
-        metadata: null,
-        priority: index,
-      });
-    });
-
-    const trimmedDefault = String(defaultTargetKey || "").trim();
-    if (trimmedDefault) {
-      const key = ensureKey(defaultEdge?.edgeKey);
-      prepared.push({
+    const key = ensureKey(usedKeys, defaultEdge?.edgeKey);
+    onEdgesChange([
+      {
         edgeKey: key,
         targetKey: trimmedDefault,
         condition: null,
         metadata: defaultEdge?.metadata && typeof defaultEdge.metadata === "object" ? defaultEdge.metadata : null,
-        priority: prepared.length,
+        priority: 0,
+      },
+    ]);
+  };
+
+  const emitIfEdgesFromList = (branches = ifBranches, elseTargetKey = ifElseTarget) => {
+    const usedKeys = new Set(edgeKeys);
+    const payload = [];
+    (branches || []).forEach((entry, index) => {
+      const normalizedTarget = String(entry.targetKey || "").trim();
+      if (!normalizedTarget) return;
+      const normalizedCondition = entry.condition ?? createDefaultBranchCondition("visible");
+      payload.push({
+        edgeKey: ensureKey(usedKeys, entry.edgeKey),
+        targetKey: normalizedTarget,
+        condition: normalizedCondition,
+        metadata: null,
+        priority: index,
+      });
+    });
+    const normalizedElse = String(elseTargetKey || "").trim();
+    if (normalizedElse) {
+      payload.push({
+        edgeKey: ensureKey(usedKeys, defaultEdge?.edgeKey),
+        targetKey: normalizedElse,
+        condition: null,
+        metadata: defaultEdge?.metadata && typeof defaultEdge.metadata === "object"
+          ? defaultEdge.metadata
+          : null,
+        priority: payload.length,
       });
     }
 
-    onEdgesChange(prepared);
+    onEdgesChange(payload);
   };
 
   const handleDefaultTargetChange = (value) => {
-    emitEdges(conditionalEdges, value);
+    if (isIfNode) {
+      setIfElseTarget(value);
+      emitIfEdgesFromList(ifBranches, value);
+    } else {
+      emitDefaultEdge(value);
+    }
   };
 
-  const handleConditionalChange = (nextEdges) => {
-    const sanitized = (nextEdges || []).map((edge, index) => ({
-      edgeKey: edge.edgeKey,
-      targetKey: String(edge.targetKey || "").trim(),
-      condition: edge.condition && typeof edge.condition === "object" ? edge.condition : null,
-      priority: typeof edge.priority === "number" ? edge.priority : index,
-    }));
-    emitEdges(sanitized, defaultTarget);
+  const handleIfBranchTargetChange = (index, targetKey) => {
+    const next = ifBranches.map((edge, idx) =>
+      idx === index ? { ...edge, targetKey } : edge,
+    );
+    setIfBranches(next);
+    emitIfEdgesFromList(next, ifElseTarget);
+  };
+
+  const handleIfBranchConditionChange = (index, condition) => {
+    const next = ifBranches.map((edge, idx) =>
+      idx === index ? { ...edge, condition } : edge,
+    );
+    setIfBranches(next);
+    emitIfEdgesFromList(next, ifElseTarget);
+  };
+
+  const handleAddIfBranch = () => {
+    const next = [
+      ...ifBranches,
+      {
+        edgeKey: "",
+        targetKey: "",
+        condition: createDefaultBranchCondition("visible"),
+        priority: ifBranches.length,
+      },
+    ];
+    setIfBranches(next);
+    emitIfEdgesFromList(next, ifElseTarget);
+  };
+
+  const handleRemoveIfBranch = (index) => {
+    const next = ifBranches.filter((_, idx) => idx !== index);
+    setIfBranches(next);
+    emitIfEdgesFromList(next, ifElseTarget);
+  };
+
+  const handleIfElseChange = (value) => {
+    setIfElseTarget(value);
+    emitIfEdgesFromList(ifBranches, value);
   };
 
   return (
@@ -196,33 +277,76 @@ export default function NodeDetailPanel({
           />
         </Stack>
 
-        <Stack spacing={1.5}>
+        {isIfNode ? (
+          <Stack spacing={1.5}>
+            <Box>
+              <Typography variant="subtitle2" gutterBottom>
+                Branches
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Branches are evaluated from top to bottom. The first matching condition runs its target node.
+              </Typography>
+              <Stack spacing={1.5}>
+                {ifBranches.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    No branches yet. Add a branch to configure conditional flows.
+                  </Typography>
+                ) : (
+                  ifBranches.map((branch, index) => (
+                    <Box key={branch.edgeKey || index} sx={{ border: 1, borderColor: "divider", borderRadius: 1.5, p: 2 }}>
+                      <Stack spacing={1.25}>
+                        <Stack direction="row" justifyContent="space-between" alignItems="center">
+                          <Typography variant="subtitle2">Branch {index + 1}</Typography>
+                          <Button color="error" size="small" onClick={() => handleRemoveIfBranch(index)}>
+                            Remove
+                          </Button>
+                        </Stack>
+                        <ConditionEditor
+                          value={branch.condition}
+                          onChange={(condition) => handleIfBranchConditionChange(index, condition)}
+                        />
+                        <TextField
+                          label="Target node"
+                          value={branch.targetKey ?? ""}
+                          onChange={(event) => handleIfBranchTargetChange(index, event.target.value)}
+                          fullWidth
+                          size="small"
+                        />
+                      </Stack>
+                    </Box>
+                  ))
+                )}
+              </Stack>
+              <Box sx={{ mt: 1 }}>
+                <Button variant="outlined" size="small" onClick={handleAddIfBranch}>
+                  Add branch
+                </Button>
+              </Box>
+            </Box>
+            <TextField
+              label="Else target node"
+              value={ifElseTarget}
+              onChange={(event) => handleIfElseChange(event.target.value)}
+              helperText="Executed when no branch condition is met."
+              fullWidth
+              size="small"
+            />
+          </Stack>
+        ) : (
           <Box>
             <Typography variant="subtitle2" gutterBottom>
-              Default next node
+              Next node
             </Typography>
             <TextField
               label="Target node key"
               value={defaultTarget}
               onChange={(event) => handleDefaultTargetChange(event.target.value)}
-              helperText="Used when no conditional edge matches."
+              helperText="Leave empty to end the workflow after this node."
               fullWidth
               size="small"
             />
           </Box>
-          <Box>
-            <Typography variant="subtitle2" gutterBottom>
-              Conditional edges
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              Edges are evaluated from top to bottom; the first matching condition determines the next node.
-            </Typography>
-            <IfConfigFields
-              edges={conditionalEdges}
-              onChange={handleConditionalChange}
-            />
-          </Box>
-        </Stack>
+        )}
 
         <Box>
           <Typography variant="subtitle2" gutterBottom>
@@ -238,9 +362,6 @@ export default function NodeDetailPanel({
       </Stack>
 
       <Stack direction="row" justifyContent="flex-end" spacing={1} alignItems="center">
-        <Typography variant="caption" color="text.secondary">
-          Delete this node
-        </Typography>
         <Button
           variant="contained"
           color="error"
@@ -280,4 +401,104 @@ NodeDetailPanel.defaultProps = {
   canDelete: true,
   saving: false,
   error: "",
+};
+
+function ConditionEditor({ value, onChange }) {
+  const type = getBranchConditionType(value);
+
+  const handleTypeChange = (event) => {
+    const nextType = event.target.value;
+    onChange(createDefaultBranchCondition(nextType));
+  };
+
+  let content = null;
+  if (type === "visible" || type === "exists") {
+    content = (
+      <TextField
+        label="XPath"
+        value={value?.[type]?.xpath ?? ""}
+        onChange={(event) =>
+          onChange({
+            [type]: { xpath: event.target.value },
+          })
+        }
+        fullWidth
+        size="small"
+      />
+    );
+  } else if (type === "urlIncludes") {
+    content = (
+      <TextField
+        label="Substring"
+        value={value?.urlIncludes ?? ""}
+        onChange={(event) =>
+          onChange({
+            urlIncludes: event.target.value,
+          })
+        }
+        fullWidth
+        size="small"
+      />
+    );
+  } else if (type === "delay") {
+    content = (
+      <TextField
+        label="Delay (seconds)"
+        type="number"
+        value={value?.delay ?? ""}
+        onChange={(event) =>
+          onChange({
+            delay: parseNumber(event.target.value) ?? 1,
+          })
+        }
+        fullWidth
+        size="small"
+      />
+    );
+  } else if (type === "script") {
+    content = (
+      <TextField
+        label="Script"
+        value={value?.script?.code ?? ""}
+        onChange={(event) =>
+          onChange({
+            script: { code: event.target.value },
+          })
+        }
+        fullWidth
+        multiline
+        minRows={3}
+        size="small"
+      />
+    );
+  }
+
+  return (
+    <Stack spacing={1.25}>
+      <TextField
+        select
+        label="Condition type"
+        value={type}
+        onChange={handleTypeChange}
+        fullWidth
+        size="small"
+      >
+        {BRANCH_CONDITION_TYPES.map((option) => (
+          <MenuItem key={option.value} value={option.value}>
+            {option.label}
+          </MenuItem>
+        ))}
+      </TextField>
+      {content}
+    </Stack>
+  );
+}
+
+ConditionEditor.propTypes = {
+  value: PropTypes.object,
+  onChange: PropTypes.func.isRequired,
+};
+
+ConditionEditor.defaultProps = {
+  value: null,
 };

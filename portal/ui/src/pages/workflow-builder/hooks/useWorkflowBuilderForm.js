@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createEmptyNode, toEditableEdge, toEditableNode } from "../utils/workflowBuilder.js";
+import { createEmptyNode, toEditableEdge, toEditableNode, generateEdgeKey } from "../utils/workflowBuilder.js";
 
 const EMPTY_FORM = {
   title: "",
@@ -74,7 +74,28 @@ export function useWorkflowBuilderForm(workflow) {
       const nodes = [...prev.nodes, newNode];
       const startNodeId = prev.startNodeId || (nodes[0]?.nodeKey ?? "");
       nextIndex = nodes.length - 1;
-      nextForm = { ...prev, nodes, startNodeId };
+      let nextEdges = prev.edges;
+      if (prev.nodes.length > 0) {
+        const sourceKey = prev.nodes[prev.nodes.length - 1]?.nodeKey?.trim();
+        const targetKey = newNode.nodeKey?.trim();
+        if (sourceKey && targetKey) {
+          const existingEdgeKeys = prev.edges
+            .map((edge) => String(edge.edgeKey || "").trim())
+            .filter(Boolean);
+          const edgeKey = generateEdgeKey(existingEdgeKeys);
+          const autoEdge = {
+            edgeKey,
+            sourceKey,
+            targetKey,
+            label: "",
+            condition: null,
+            metadata: null,
+            priority: prev.edges.length,
+          };
+          nextEdges = [...prev.edges, autoEdge];
+        }
+      }
+      nextForm = { ...prev, nodes, edges: nextEdges, startNodeId };
       return nextForm;
     });
     if (nextIndex >= 0) {
