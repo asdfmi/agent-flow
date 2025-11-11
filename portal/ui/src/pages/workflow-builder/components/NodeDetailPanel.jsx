@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import {
   Alert,
@@ -70,22 +70,27 @@ export default function NodeDetailPanel({
       priority: typeof edge.priority === "number" ? edge.priority : index,
     }));
 
-  /* eslint-disable react-hooks/set-state-in-effect -- state sync between props and local branch editor */
-  const createBranchKey = () => globalThis.crypto.randomUUID();
+  const createBranchKey = useCallback(() => globalThis.crypto.randomUUID(), []);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    if (skipSyncRef.current) {
-      skipSyncRef.current = false;
-      return;
-    }
     if (!node || !isIfNode) {
-      setIfBranches([]);
-      setIfElseTarget("");
+      if (ifBranches.length !== 0) setIfBranches([]);
+      if (ifElseTarget !== "") setIfElseTarget("");
       return;
     }
     if (conditionalEdges.length > 0) {
-      setIfBranches(conditionalEdges);
+      setIfBranches((prev) => {
+        if (
+          prev.length === conditionalEdges.length &&
+          prev.every(
+            (entry, index) => entry.edgeKey === conditionalEdges[index].edgeKey,
+          )
+        ) {
+          return prev;
+        }
+        return conditionalEdges;
+      });
     } else if (conditionalEdges.length === 0 && ifBranches.length === 0) {
       setIfBranches([
         {
@@ -97,7 +102,15 @@ export default function NodeDetailPanel({
       ]);
     }
     setIfElseTarget(defaultTarget ?? "");
-  }, [node, isIfNode, conditionalEdges, defaultTarget, ifBranches.length]);
+  }, [
+    node,
+    isIfNode,
+    conditionalEdges,
+    defaultTarget,
+    createBranchKey,
+    ifBranches.length,
+    ifElseTarget,
+  ]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   if (!node) {

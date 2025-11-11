@@ -2,19 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
-  Button,
-  Chip,
   CircularProgress,
+  IconButton,
   Paper,
   Stack,
-  TextField,
   Typography,
-  MenuItem,
 } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 import ExecutionViewerModal from "../../../components/ExecutionViewerModal.jsx";
 import { useWorkflowRun } from "../../../hooks/useWorkflowRun.js";
 import NodeDetailPanel from "./NodeDetailPanel.jsx";
-import WorkflowRunHistory from "./WorkflowRunHistory.jsx";
+import WorkflowMetaPanel from "./WorkflowMetaPanel.jsx";
 import { useWorkflowBuilderForm } from "../hooks/useWorkflowBuilderForm.js";
 import {
   buildPayload,
@@ -57,6 +55,7 @@ export default function WorkflowBuilderPage() {
     handleStartChange,
     handleAddNode,
     handleRemoveNode,
+    handleSelectNode,
     handleNodeChange,
     replaceEdgesForNode,
     syncFromWorkflow,
@@ -71,8 +70,10 @@ export default function WorkflowBuilderPage() {
     error: "",
   });
   const [hasPendingChanges, setHasPendingChanges] = useState(false);
+  const [isNodePanelHidden, setNodePanelHidden] = useState(false);
 
   const hydratingRef = useRef(true);
+  const prevSelectedNodeKeyRef = useRef(selectedNode?.nodeKey ?? "");
   const latestFormRef = useRef(form);
   const lastSavedSnapshotRef = useRef(JSON.stringify(form));
 
@@ -235,18 +236,6 @@ export default function WorkflowBuilderPage() {
     [selectedIndex, handleNodeChange],
   );
 
-  const handleRefreshWorkflow = useCallback(() => {
-    if (!workflowId) return;
-    reloadWorkflow().then((result) => {
-      if (result?.ok && result.data) {
-        applyWorkflowData(result.data, {
-          preserveSelection: true,
-          force: true,
-        });
-      }
-    });
-  }, [workflowId, reloadWorkflow, applyWorkflowData]);
-
   useEffect(() => {
     latestFormRef.current = form;
     if (hydratingRef.current) {
@@ -286,6 +275,15 @@ export default function WorkflowBuilderPage() {
     return form.edges.filter((edge) => edge.sourceKey === selectedNodeKey);
   }, [form.edges, selectedNodeKey]);
 
+  useEffect(() => {
+    const currentKey = selectedNode?.nodeKey ?? "";
+    const prevKey = prevSelectedNodeKeyRef.current;
+    if (currentKey && currentKey !== prevKey && isNodePanelHidden) {
+      setNodePanelHidden(false);
+    }
+    prevSelectedNodeKeyRef.current = currentKey;
+  }, [selectedNode, isNodePanelHidden]);
+
   const handleNodeEdgesChange = useCallback(
     (nextEdges) => {
       if (!selectedNodeKey) return;
@@ -297,10 +295,6 @@ export default function WorkflowBuilderPage() {
     },
     [replaceEdgesForNode, selectedNodeKey],
   );
-
-  const handleRefreshRuns = useCallback(() => {
-    fetchRuns({});
-  }, [fetchRuns]);
 
   useEffect(() => {
     if (workflowState.data) {
@@ -383,194 +377,98 @@ export default function WorkflowBuilderPage() {
           mb: { xs: 2, lg: 0 },
         }}
       >
-        <Paper
-          elevation={4}
+        <WorkflowMetaPanel
+          form={form}
+          isSaving={isSaving}
+          hasPendingChanges={hasPendingChanges}
+          isNewWorkflow={isNewWorkflow}
+          runState={{
+            status: runState.status,
+            disabled:
+              !workflowId ||
+              runState.status === "starting" ||
+              runState.status === "queued",
+            viewerDisabled: !workflowId,
+            error: runError,
+          }}
+          wsStatus={wsStatus}
+          saveError={saveError}
+          loadError={loadError && workflowState.data ? loadError : ""}
+          handleSave={handleSave}
+          onRun={onRun}
+          onViewer={() => setViewerOpen(true)}
+          metaTitleChange={(event) => {
+            setSaveError("");
+            metaTitleChange(event);
+          }}
+          metaDescriptionChange={(event) => {
+            setSaveError("");
+            metaDescriptionChange(event);
+          }}
+          handleStartChange={(event) => {
+            setSaveError("");
+            handleStartChange(event);
+          }}
+          handleAddNode={handleAddNodeAndEdit}
+          runsState={runsState}
+          onRefreshRuns={() => fetchRuns({})}
+        />
+      </Box>
+
+      {isNodePanelHidden ? null : (
+        <Box
           sx={{
-            p: 2,
-            bgcolor: "background.paper",
-            maxHeight: { xs: "none", lg: "70vh" },
-            overflow: "auto",
+            position: { xs: "relative", lg: "absolute" },
+            top: { lg: 24 },
+            right: { lg: 24 },
+            bottom: { lg: 24 },
+            width: { xs: "100%", lg: 380 },
+            maxWidth: 420,
+            zIndex: 1,
+            pointerEvents: "auto",
+            px: { xs: 2, lg: 0 },
           }}
         >
-          <Stack spacing={2}>
-            <Stack spacing={1}>
-              <TextField
-                label="Workflow title"
-                value={form.title}
-                onChange={(event) => {
-                  setSaveError("");
-                  metaTitleChange(event);
+          <Paper
+            elevation={4}
+            sx={{
+              p: 2,
+              height: { xs: "auto", lg: "100%" },
+              overflow: "auto",
+            }}
+          >
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              sx={{ mb: 1 }}
+            >
+              <Typography variant="subtitle1">Node details</Typography>
+              <IconButton
+                aria-label="Close node panel"
+                onClick={() => {
+                  setNodePanelHidden(true);
+                  handleSelectNode(-1);
                 }}
-              />
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                <Button
-                  variant="contained"
-                  onClick={handleSave}
-                  disabled={isSaving || !hasPendingChanges}
-                >
-                  Save
-                </Button>
-                <Button
-                  variant="contained"
-                  color="success"
-                  onClick={onRun}
-                  disabled={
-                    !workflowId ||
-                    runState.status === "starting" ||
-                    runState.status === "queued"
-                  }
-                >
-                  Run
-                </Button>
-                <Button
-                  variant="outlined"
-                  onClick={() => setViewerOpen(true)}
-                  disabled={!workflowId}
-                >
-                  Viewer
-                </Button>
-              </Stack>
-            </Stack>
-
-            <TextField
-              label="Description"
-              value={form.description}
-              onChange={(event) => {
-                setSaveError("");
-                metaDescriptionChange(event);
-              }}
-              multiline
-              minRows={2}
-            />
-
-            <Stack spacing={1}>
-              <TextField
-                select
-                label="Start node"
-                value={form.startNodeId}
-                onChange={(event) => {
-                  setSaveError("");
-                  handleStartChange(event);
-                }}
+                size="small"
               >
-                {form.nodes.map((node) => (
-                  <MenuItem key={node.nodeKey} value={node.nodeKey}>
-                    {node.label || node.nodeKey}
-                  </MenuItem>
-                ))}
-                {form.nodes.length === 0 ? (
-                  <MenuItem value="">No nodes</MenuItem>
-                ) : null}
-              </TextField>
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                <Button onClick={handleAddNodeAndEdit}>Add node</Button>
-                <Button
-                  onClick={handleDeleteSelectedNode}
-                  disabled={!canDeleteNode}
-                >
-                  Delete node
-                </Button>
-                <Button
-                  onClick={() => {
-                    handleRefreshWorkflow();
-                    handleRefreshRuns();
-                  }}
-                  disabled={!workflowId}
-                >
-                  Refresh
-                </Button>
-              </Stack>
+                <CloseIcon fontSize="small" />
+              </IconButton>
             </Stack>
-
-            <Stack direction="row" spacing={1} flexWrap="wrap">
-              <Chip label={`Run: ${runState.status}`} />
-              <Chip label={`WS: ${wsStatus}`} />
-              <Chip label={`Nodes: ${form.nodes.length}`} />
-              {hasPendingChanges ? <Chip label="Unsaved" /> : null}
-            </Stack>
-
-            {isNewWorkflow ? (
-              <Alert severity="info">
-                This workflow is not saved yet. Add nodes and press Save to
-                create it.
-              </Alert>
-            ) : null}
-
-            {runError || saveError || (loadError && workflowState.data) ? (
-              <Stack spacing={1}>
-                {runError ? <Alert severity="error">{runError}</Alert> : null}
-                {saveError ? (
-                  <Alert severity="error">
-                    {saveError.split(/\n+/).map((line, index) => (
-                      <Typography key={`${line}-${index}`}>{line}</Typography>
-                    ))}
-                  </Alert>
-                ) : null}
-                {loadError && workflowState.data ? (
-                  <Alert severity="warning">{loadError}</Alert>
-                ) : null}
-              </Stack>
-            ) : null}
-          </Stack>
-        </Paper>
-      </Box>
-
-      <Box
-        sx={{
-          position: { xs: "relative", lg: "absolute" },
-          top: { lg: 24 },
-          right: { lg: 24 },
-          bottom: { lg: 24 },
-          width: { xs: "100%", lg: 380 },
-          maxWidth: 420,
-          zIndex: 1,
-          pointerEvents: "auto",
-          px: { xs: 2, lg: 0 },
-        }}
-      >
-        <Paper
-          elevation={4}
-          sx={{
-            p: 2,
-            height: { xs: "auto", lg: "100%" },
-            overflow: "auto",
-          }}
-        >
-          <NodeDetailPanel
-            node={selectedNode}
-            edges={nodeEdges}
-            allEdges={form.edges}
-            onNodeChange={handleNodePartialChange}
-            onEdgesChange={handleNodeEdgesChange}
-            onDelete={handleDeleteSelectedNode}
-            canDelete={canDeleteNode}
-            saving={isSaving}
-            error={saveError}
-          />
-        </Paper>
-      </Box>
-
-      <Box
-        sx={{
-          position: { xs: "relative", lg: "absolute" },
-          left: { lg: 24 },
-          bottom: { lg: 24 },
-          width: { xs: "100%", sm: 420 },
-          maxWidth: 500,
-          zIndex: 1,
-          pointerEvents: "auto",
-          px: { xs: 2, lg: 0 },
-        }}
-      >
-        <Paper elevation={4} sx={{ p: 2 }}>
-          <WorkflowRunHistory
-            runs={runsState.data}
-            loading={runsState.loading}
-            error={runsState.error}
-            onRefresh={handleRefreshRuns}
-          />
-        </Paper>
-      </Box>
+            <NodeDetailPanel
+              node={selectedNode}
+              edges={nodeEdges}
+              allEdges={form.edges}
+              onNodeChange={handleNodePartialChange}
+              onEdgesChange={handleNodeEdgesChange}
+              onDelete={handleDeleteSelectedNode}
+              canDelete={canDeleteNode}
+              saving={isSaving}
+              error={saveError}
+            />
+          </Paper>
+        </Box>
+      )}
 
       <ExecutionViewerModal
         open={isViewerOpen}

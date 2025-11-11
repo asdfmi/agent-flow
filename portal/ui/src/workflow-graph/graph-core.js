@@ -28,6 +28,7 @@ export default class GraphCore extends EventTarget {
     this.snapshot = this.#buildSnapshot();
     this.viewCache = null;
     this.viewportSize = { width: 1280, height: 720 };
+    this.constrainToViewport = false;
     if (initialWorkflow) {
       this.load(initialWorkflow, { force: true });
     }
@@ -424,14 +425,21 @@ export default class GraphCore extends EventTarget {
   }
 
   #clampPosition(position) {
-    if (!position) return { x: 32, y: 32 };
+    const fallback = { x: 32, y: 32 };
+    const base = {
+      x: Number.isFinite(position?.x) ? position.x : fallback.x,
+      y: Number.isFinite(position?.y) ? position.y : fallback.y,
+    };
+    if (!this.constrainToViewport) {
+      return base;
+    }
     const width = this.viewportSize?.width ?? 1280;
     const height = this.viewportSize?.height ?? 720;
     const maxX = Math.max(32, width - 220);
     const maxY = Math.max(32, height - 140);
     return {
-      x: Math.min(Math.max(position.x ?? 32, 32), maxX),
-      y: Math.min(Math.max(position.y ?? 32, 32), maxY),
+      x: Math.min(Math.max(base.x, 32), maxX),
+      y: Math.min(Math.max(base.y, 32), maxY),
     };
   }
 
@@ -453,6 +461,7 @@ export default class GraphCore extends EventTarget {
       label: node.label || node.nodeKey || `Node ${index + 1}`,
       type: node.type || "navigate",
       position: this.#getNodePosition(node.nodeKey, index),
+      config: node.config || null,
     }));
     const edges = this.state.edges.map((edge, index) => ({
       edgeKey: edge.edgeKey || edge.id || `edge_${index + 1}`,

@@ -17,9 +17,7 @@ export default function GraphViewport({ graphCore }) {
     };
   }, [graphCore]);
 
-  return (
-    <Box ref={containerRef} />
-  );
+  return <Box ref={containerRef} />;
 }
 
 GraphViewport.propTypes = {

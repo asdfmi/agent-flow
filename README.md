@@ -20,5 +20,5 @@ For deeper architecture, data model, API, and deployment details—including ste
    ```
 4. Run
    ```bash
-   pnpm run dev
+   pnpm dev
    ```
