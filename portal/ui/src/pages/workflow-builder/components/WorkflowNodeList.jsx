@@ -84,8 +84,8 @@ export default function WorkflowNodeList({
     const entry = nodeMap.get(edge.targetKey);
     const label = entry ? getNodeLabel(entry.node, entry.index) : edge.targetKey || "End";
     return (
-      <Stack direction="row" alignItems="center" spacing={1} sx={{ pl: 6 + depth * 2, pb: 0.5 }}>
-        <ArrowDownwardIcon fontSize="inherit" sx={{ color: "text.disabled", fontSize: 16 }} />
+      <Stack direction="row" alignItems="center" spacing={1}>
+        <ArrowDownwardIcon color="disabled" fontSize="small" />
         <Typography variant="caption" color="text.secondary">
           {label}
         </Typography>
@@ -106,33 +106,22 @@ export default function WorkflowNodeList({
     const isExpanded = expandedNodes[nodeKey] ?? true;
     const isStart = startKey === nodeKey;
     const isActive = activeNodeKey ? activeNodeKey === nodeKey : false;
-    const indent = 4 + depth * 2;
     const conditionLabel = incomingEdge ? summarizeCondition(incomingEdge.condition) : null;
 
     renderedKeys.add(nodeKey);
 
     return (
       <Box key={`${nodeKey}-${depth}-${conditionLabel || "root"}`}>
-        <ListItemButton
-          selected={selectedIndex === index}
-          onClick={() => onSelectNode(index)}
-          sx={{
-            pl: indent,
-            alignItems: "flex-start",
-            flexDirection: "column",
-            gap: 0.5,
-            mb: 0.5,
-          }}
-        >
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ width: "100%" }}>
-            <ListItemIcon sx={{ minWidth: 28 }}>
+        <ListItemButton selected={selectedIndex === index} onClick={() => onSelectNode(index)}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <ListItemIcon>
               {isIfNode ? (
                 isExpanded ? <FolderOpenIcon fontSize="small" /> : <FolderIcon fontSize="small" />
               ) : (
                 <InsertDriveFileIcon fontSize="small" />
               )}
             </ListItemIcon>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Box>
               <Typography variant="subtitle2" noWrap>
                 {getNodeLabel(node, index)}
               </Typography>
@@ -146,9 +135,9 @@ export default function WorkflowNodeList({
               </Typography>
             </Box>
             <Stack direction="row" spacing={0.5}>
-              <Chip size="small" label={node.type} sx={{ textTransform: "uppercase", fontSize: "0.65rem" }} />
-              {isStart ? <Chip size="small" color="success" label="Start" sx={{ fontSize: "0.65rem" }} /> : null}
-              {isActive ? <Chip size="small" color="primary" label="Active" sx={{ fontSize: "0.65rem" }} /> : null}
+              <Chip size="small" label={node.type} />
+              {isStart ? <Chip size="small" color="success" label="Start" /> : null}
+              {isActive ? <Chip size="small" color="primary" label="Active" /> : null}
             </Stack>
             {hasChildren ? (
               <IconButton
@@ -195,8 +184,8 @@ export default function WorkflowNodeList({
   const danglingNodes = nodes.filter((node) => node.nodeKey && !renderedKeys.has(node.nodeKey));
 
   return (
-    <Box sx={{ width: { xs: "100%", md: 320 }, flexShrink: 0 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ pb: 1 }}>
+    <Box>
+      <Stack direction="row" justifyContent="space-between" alignItems="center">
         <Typography variant="subtitle1">Workflow tree</Typography>
         <Button
           size="small"
@@ -208,10 +197,10 @@ export default function WorkflowNodeList({
         </Button>
       </Stack>
       <Divider />
-      <List sx={{ px: 1, pt: 1, pb: 0 }}>
+      <List>
         <ListItem disablePadding>
           <ListItemButton onClick={() => setWorkflowOpen((prev) => !prev)}>
-            <ListItemIcon sx={{ minWidth: 32 }}>
+            <ListItemIcon>
               {workflowOpen ? <FolderOpenIcon /> : <FolderIcon />}
             </ListItemIcon>
             <ListItemText
@@ -225,7 +214,7 @@ export default function WorkflowNodeList({
         <Collapse in={workflowOpen} timeout="auto" unmountOnExit>
           <List disablePadding>
             {nodes.length === 0 ? (
-              <ListItem sx={{ pl: 4 }}>
+              <ListItem>
                 <ListItemText
                   primary="No nodes yet. Use “New” to start building."
                   primaryTypographyProps={{ variant: "body2", color: "text.secondary" }}
@@ -235,7 +224,7 @@ export default function WorkflowNodeList({
               <>
                 {mainTree}
                 {danglingNodes.length > 0 ? (
-                  <Box sx={{ pl: 4, pt: 2 }}>
+                  <Box>
                     <Typography variant="caption" color="text.secondary">
                       Unlinked nodes
                     </Typography>
@@ -246,9 +235,8 @@ export default function WorkflowNodeList({
                         <ListItemButton
                           key={`dangling-${node.nodeKey}`}
                           onClick={() => onSelectNode(entry.index)}
-                          sx={{ pl: 2 }}
                         >
-                          <ListItemIcon sx={{ minWidth: 28 }}>
+                          <ListItemIcon>
                             <InsertDriveFileIcon fontSize="small" />
                           </ListItemIcon>
                           <ListItemText
@@ -265,7 +253,7 @@ export default function WorkflowNodeList({
           </List>
         </Collapse>
       </List>
-      <Divider sx={{ display: { xs: "block", md: "none" }, mt: 2 }} />
+      <Divider />
     </Box>
   );
 }

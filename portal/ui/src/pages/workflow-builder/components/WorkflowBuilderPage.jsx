@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
-  Box,
   Button,
   Chip,
   CircularProgress,
+  Container,
   Paper,
   Stack,
   TextField,
@@ -274,50 +274,35 @@ export default function WorkflowBuilderPage() {
 
   if (isLoading) {
     return (
-      <Box
-        sx={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Stack alignItems="center" spacing={2}>
-          <CircularProgress size={24} />
-          <Typography variant="body2" color="text.secondary">
+      <Container>
+        <Stack>
+          <CircularProgress />
+          <Typography>
             Loading...
           </Typography>
         </Stack>
-      </Box>
+      </Container>
     );
   }
 
   if (loadError && !workflowState.data) {
     return (
-      <Box
-        sx={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          px: 3,
-        }}
-      >
+      <Container>
         <Alert severity="error">{loadError}</Alert>
-      </Box>
+      </Container>
     );
   }
 
   return (
-    <Box sx={{ minHeight: "100vh", p: { xs: 2, md: 4 } }}>
-      <Stack spacing={3}>
-        <Paper variant="outlined" sx={{ p: 2 }}>
-          <GraphViewport graphCore={graphCore} height={420} />
+    <Container>
+      <Stack>
+        <Paper>
+          <GraphViewport graphCore={graphCore} />
         </Paper>
 
-        <Paper variant="outlined" sx={{ p: 3 }}>
-          <Stack spacing={2}>
-            <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "stretch", md: "flex-end" }} justifyContent="space-between">
+        <Paper>
+          <Stack>
+            <Stack>
               <TextField
                 label="Workflow title"
                 value={form.title}
@@ -325,21 +310,18 @@ export default function WorkflowBuilderPage() {
                   setSaveError("");
                   metaTitleChange(event);
                 }}
-                fullWidth
               />
-              <Stack direction="row" spacing={1} flexShrink={0}>
-                <Button variant="contained" onClick={handleSave} disabled={isSaving || !hasPendingChanges}>
+              <Stack>
+                <Button onClick={handleSave} disabled={isSaving || !hasPendingChanges}>
                   Save
                 </Button>
                 <Button
-                  variant="outlined"
-                  color="secondary"
                   onClick={onRun}
                   disabled={!workflowId || runState.status === "starting" || runState.status === "queued"}
                 >
                   Run
                 </Button>
-                <Button variant="outlined" onClick={() => setViewerOpen(true)} disabled={!workflowId}>
+                <Button onClick={() => setViewerOpen(true)} disabled={!workflowId}>
                   Viewer
                 </Button>
               </Stack>
@@ -354,7 +336,7 @@ export default function WorkflowBuilderPage() {
               multiline
               minRows={2}
             />
-            <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
+            <Stack>
               <TextField
                 select
                 label="Start node"
@@ -363,7 +345,6 @@ export default function WorkflowBuilderPage() {
                   setSaveError("");
                   handleStartChange(event);
                 }}
-                fullWidth
               >
                 {form.nodes.map((node) => (
                   <MenuItem key={node.nodeKey} value={node.nodeKey}>
@@ -372,15 +353,14 @@ export default function WorkflowBuilderPage() {
                 ))}
                 {form.nodes.length === 0 ? <MenuItem value="">No nodes</MenuItem> : null}
               </TextField>
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                <Button variant="contained" color="success" onClick={handleAddNodeAndEdit}>
+              <Stack>
+                <Button onClick={handleAddNodeAndEdit}>
                   Add node
                 </Button>
-                <Button variant="outlined" color="error" onClick={handleDeleteSelectedNode} disabled={!canDeleteNode}>
+                <Button onClick={handleDeleteSelectedNode} disabled={!canDeleteNode}>
                   Delete node
                 </Button>
                 <Button
-                  variant="text"
                   onClick={() => {
                     handleRefreshWorkflow();
                     handleRefreshRuns();
@@ -391,74 +371,56 @@ export default function WorkflowBuilderPage() {
                 </Button>
               </Stack>
             </Stack>
-            <Stack direction="row" spacing={1} flexWrap="wrap">
-              <Chip
-                label={`Run: ${runState.status}`}
-                color={
-                  runState.status === "running"
-                    ? "success"
-                    : runState.status === "failed"
-                      ? "error"
-                      : runState.status === "queued" || runState.status === "starting"
-                        ? "warning"
-                        : "default"
-                }
-                size="small"
-              />
-              <Chip
-                label={`WS: ${wsStatus}`}
-                color={wsStatus === "open" ? "success" : wsStatus === "error" ? "error" : "default"}
-                size="small"
-              />
-              <Chip label={`Nodes: ${form.nodes.length}`} size="small" />
-              {hasPendingChanges ? <Chip label="Unsaved" color="warning" size="small" /> : null}
+            <Stack>
+              <Chip label={`Run: ${runState.status}`} />
+              <Chip label={`WS: ${wsStatus}`} />
+              <Chip label={`Nodes: ${form.nodes.length}`} />
+              {hasPendingChanges ? <Chip label="Unsaved" /> : null}
             </Stack>
             {isNewWorkflow ? (
-              <Alert severity="info" variant="outlined">
+              <Alert severity="info">
                 This workflow is not saved yet. Add nodes and press Save to create it.
               </Alert>
             ) : null}
             {(runError || saveError || (loadError && workflowState.data)) ? (
-              <Stack spacing={1}>
-                {runError ? <Alert severity="error" variant="outlined">{runError}</Alert> : null}
+              <Stack>
+                {runError ? <Alert severity="error">{runError}</Alert> : null}
                 {saveError ? (
-                  <Alert severity="error" variant="outlined">
+                  <Alert severity="error">
                     {saveError.split(/\n+/).map((line, index) => (
-                      <Typography key={`${line}-${index}`} component="div" variant="body2">
+                      <Typography key={`${line}-${index}`}>
                         {line}
                       </Typography>
                     ))}
                   </Alert>
                 ) : null}
-                {loadError && workflowState.data ? <Alert severity="warning" variant="outlined">{loadError}</Alert> : null}
+                {loadError && workflowState.data ? <Alert severity="warning">{loadError}</Alert> : null}
               </Stack>
             ) : null}
           </Stack>
         </Paper>
 
-        <Stack direction={{ xs: "column", lg: "row" }} spacing={3}>
-          <Paper variant="outlined" sx={{ flex: 1, p: 2 }}>
-            <NodeDetailPanel
-              node={selectedNode}
-              edges={nodeEdges}
-              allEdges={form.edges}
-              onNodeChange={handleNodePartialChange}
-              onEdgesChange={handleNodeEdgesChange}
-              onDelete={handleDeleteSelectedNode}
-              canDelete={canDeleteNode}
-              saving={isSaving}
-              error={saveError}
-            />
-          </Paper>
-          <Paper variant="outlined" sx={{ flexBasis: 360, p: 2 }}>
-            <WorkflowRunHistory
-              runs={runsState.data}
-              loading={runsState.loading}
-              error={runsState.error}
-              onRefresh={handleRefreshRuns}
-            />
-          </Paper>
-        </Stack>
+        <Paper>
+          <NodeDetailPanel
+            node={selectedNode}
+            edges={nodeEdges}
+            allEdges={form.edges}
+            onNodeChange={handleNodePartialChange}
+            onEdgesChange={handleNodeEdgesChange}
+            onDelete={handleDeleteSelectedNode}
+            canDelete={canDeleteNode}
+            saving={isSaving}
+            error={saveError}
+          />
+        </Paper>
+        <Paper>
+          <WorkflowRunHistory
+            runs={runsState.data}
+            loading={runsState.loading}
+            error={runsState.error}
+            onRefresh={handleRefreshRuns}
+          />
+        </Paper>
       </Stack>
 
       <ExecutionViewerModal
@@ -471,6 +433,6 @@ export default function WorkflowBuilderPage() {
         nodes={viewerNodes}
         currentStepIndex={currentStepIndex}
       />
-    </Box>
+    </Container>
   );
 }

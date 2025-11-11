@@ -1,13 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  Alert,
-  Button,
-  CircularProgress,
-  Container,
-  Paper,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Alert, Button, CircularProgress, Typography } from "@mui/material";
 import { HttpError } from "../../../api/client.js";
 import { listWorkflows } from "../../../api/workflows.js";
 
@@ -47,76 +39,40 @@ export default function WorkflowsPage() {
 
   if (state.loading) {
     return (
-      <Container maxWidth="md" sx={{ py: 4 }}>
-        <Stack spacing={2}>
-          <CircularProgress size={24} />
-          <Typography>
-            Loading...
-          </Typography>
-        </Stack>
-      </Container>
+      <>
+        <CircularProgress />
+        <Typography>Loading...</Typography>
+      </>
     );
   }
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Stack spacing={3}>
-        <Stack spacing={0.5}>
-          <Typography>Workflows</Typography>
-          <Typography>
-            Select a workflow to view details and run the automation.
-          </Typography>
-          <Button variant="contained" onClick={handleCreate} sx={{ alignSelf: "flex-start", mt: 1 }}>
-            Create workflow
-          </Button>
-        </Stack>
-        {state.error ? <Alert severity="error">{state.error}</Alert> : null}
-        {state.data.length === 0 ? (
-          <Typography>
-            No workflows have been registered yet.
-          </Typography>
-        ) : (
-          <Stack spacing={2}>
-            {state.data.map((workflow) => (
-              <Paper
-                key={workflow.id}
-                variant="outlined"
+    <>
+      <Typography>Workflows</Typography>
+      <Typography>Select a workflow to view details and run the automation.</Typography>
+      <Button onClick={handleCreate}>Create workflow</Button>
+      {state.error ? <Alert severity="error">{state.error}</Alert> : null}
+      {state.data.length === 0 ? (
+        <Typography>No workflows have been registered yet.</Typography>
+      ) : (
+        <ul>
+          {state.data.map((workflow) => (
+            <li key={workflow.id}>
+              <Typography>{workflow.title || workflow.id}</Typography>
+              {workflow.description ? <Typography>{workflow.description}</Typography> : null}
+              <Typography>Updated: {workflow.updatedAt}</Typography>
+              <Button
                 onClick={() => {
                   const target = String(workflow.id);
                   window.location.href = `/workflow/${encodeURIComponent(target)}`;
                 }}
               >
-                <Box padding={2}>
-                  <Stack spacing={1}>
-                    <Typography>{workflow.title || workflow.id}</Typography>
-                    {workflow.description ? (
-                      <Typography>
-                        {workflow.description}
-                      </Typography>
-                    ) : null}
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Typography>
-                        Updated: {workflow.updatedAt}
-                      </Typography>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          const target = String(workflow.id);
-                          window.location.href = `/workflow/${encodeURIComponent(target)}`;
-                        }}
-                      >
-                        View details
-                      </Button>
-                    </Stack>
-                  </Stack>
-                </Box>
-              </Paper>
-            ))}
-          </Stack>
-        )}
-      </Stack>
-    </Container>
+                View details
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   );
 }

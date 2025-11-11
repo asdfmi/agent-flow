@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { Stack, TextField, MenuItem, Typography } from "@mui/material";
+import { TextField, MenuItem, Typography } from "@mui/material";
 import { parseNumber } from "../utils/workflowBuilder.js";
 
 export default function ClickConfigFields({ config, onChange }) {
@@ -20,56 +20,43 @@ export default function ClickConfigFields({ config, onChange }) {
   };
 
   return (
-    <Stack spacing={1.5}>
-      <Typography variant="subtitle2">Click settings</Typography>
+    <>
+      <Typography>Click settings</Typography>
       <TextField
         label="XPath"
         value={config.xpath ?? ""}
         onChange={(event) => setConfig({ xpath: event.target.value })}
-        fullWidth
       />
-      <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-        <TextField
-          select
-          label="Button"
-          value={options.button ?? ""}
-          onChange={(event) => updateOptions({ button: event.target.value || null })}
-          helperText="Optional"
-          fullWidth
-        >
-          <MenuItem value=""><em>Default</em></MenuItem>
-          <MenuItem value="left">left</MenuItem>
-          <MenuItem value="right">right</MenuItem>
-          <MenuItem value="middle">middle</MenuItem>
-        </TextField>
-        <TextField
-          label="Click count"
-          type="number"
-          value={options.clickCount ?? ""}
-          onChange={(event) => updateOptions({ clickCount: parseNumber(event.target.value) })}
-          helperText="Optional"
-          fullWidth
-        />
-      </Stack>
-      <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-        <TextField
-          label="Delay (ms)"
-          type="number"
-          value={options.delay ?? ""}
-          onChange={(event) => updateOptions({ delay: parseNumber(event.target.value) })}
-          helperText="Optional"
-          fullWidth
-        />
-        <TextField
-          label="Timeout (ms)"
-          type="number"
-          value={options.timeout ?? ""}
-          onChange={(event) => updateOptions({ timeout: parseNumber(event.target.value) })}
-          helperText="Optional"
-          fullWidth
-        />
-      </Stack>
-    </Stack>
+      <TextField
+        select
+        label="Button"
+        value={options.button ?? ""}
+        onChange={(event) => updateOptions({ button: event.target.value || null })}
+      >
+        <MenuItem value=""><em>Default</em></MenuItem>
+        <MenuItem value="left">left</MenuItem>
+        <MenuItem value="right">right</MenuItem>
+        <MenuItem value="middle">middle</MenuItem>
+      </TextField>
+      <TextField
+        label="Click count"
+        type="number"
+        value={options.clickCount ?? ""}
+        onChange={(event) => updateOptions({ clickCount: parseNumber(event.target.value) })}
+      />
+      <TextField
+        label="Delay (ms)"
+        type="number"
+        value={options.delay ?? ""}
+        onChange={(event) => updateOptions({ delay: parseNumber(event.target.value) })}
+      />
+      <TextField
+        label="Timeout (ms)"
+        type="number"
+        value={options.timeout ?? ""}
+        onChange={(event) => updateOptions({ timeout: parseNumber(event.target.value) })}
+      />
+    </>
   );
 }
 

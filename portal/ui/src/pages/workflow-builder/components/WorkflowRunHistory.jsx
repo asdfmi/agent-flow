@@ -45,7 +45,7 @@ export default function WorkflowRunHistory({ runs, loading, error, onRefresh }) 
       ) : error ? (
         <Alert severity="error">{error}</Alert>
       ) : runs.length === 0 ? (
-        <Paper variant="outlined" sx={{ p: 2 }}>
+        <Paper variant="outlined">
           <Typography variant="body2" color="text.secondary">
             No runs recorded yet.
           </Typography>
@@ -53,14 +53,14 @@ export default function WorkflowRunHistory({ runs, loading, error, onRefresh }) 
       ) : (
         <Stack spacing={1.5}>
           {runs.map((run) => (
-            <Paper key={run.id} variant="outlined" sx={{ p: 2 }}>
+            <Paper key={run.id} variant="outlined">
               <Stack direction={{ xs: "column", md: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }}>
                 <Stack spacing={0.5}>
                   <Stack direction="row" spacing={1} alignItems="center">
                     <Typography variant="subtitle2" noWrap>
                       {run.runKey || `Run #${run.id}`}
                     </Typography>
-                    <Chip size="small" label={run.status} color={statusColor(run.status)} sx={{ textTransform: "uppercase" }} />
+                    <Chip size="small" label={run.status} color={statusColor(run.status)} />
                   </Stack>
                   <Typography variant="caption" color="text.secondary">
                     Started: {run.startedAt ? new Date(run.startedAt).toLocaleString() : "-"}
@@ -70,7 +70,7 @@ export default function WorkflowRunHistory({ runs, loading, error, onRefresh }) 
                   </Typography>
                 </Stack>
                 {run.errorMessage ? (
-                  <Typography variant="caption" color="error" sx={{ maxWidth: 360 }}>
+                  <Typography variant="caption" color="error">
                     {run.errorMessage}
                   </Typography>
                 ) : null}

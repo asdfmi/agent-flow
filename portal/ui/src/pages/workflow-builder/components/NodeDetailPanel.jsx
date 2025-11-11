@@ -5,7 +5,6 @@ import {
   Button,
   Divider,
   MenuItem,
-  Paper,
   Stack,
   TextField,
   Typography,
@@ -271,26 +270,24 @@ export default function NodeDetailPanel({
                 </Typography>
               ) : (
                 ifBranches.map((branch, index) => (
-                  <Paper key={branch.edgeKey || index} variant="outlined">
-                    <Stack spacing={1.25} padding={2}>
-                      <Stack direction="row" justifyContent="space-between" alignItems="center">
-                        <Typography variant="subtitle2">Branch {index + 1}</Typography>
-                        <Button color="error" size="small" onClick={() => handleRemoveIfBranch(index)}>
-                          Remove
-                        </Button>
-                      </Stack>
-                      <ConditionEditor
-                        value={branch.condition}
-                        onChange={(condition) => handleIfBranchConditionChange(index, condition)}
-                      />
-                      <TextField
-                        label="Target node"
-                        value={branch.targetKey ?? ""}
-                        onChange={(event) => handleIfBranchTargetChange(index, event.target.value)}
-                        fullWidth
-                      />
+                  <Stack key={branch.edgeKey || index} spacing={1.25}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Typography variant="subtitle2">Branch {index + 1}</Typography>
+                      <Button color="error" size="small" onClick={() => handleRemoveIfBranch(index)}>
+                        Remove
+                      </Button>
                     </Stack>
-                  </Paper>
+                    <ConditionEditor
+                      value={branch.condition}
+                      onChange={(condition) => handleIfBranchConditionChange(index, condition)}
+                    />
+                    <TextField
+                      label="Target node"
+                      value={branch.targetKey ?? ""}
+                      onChange={(event) => handleIfBranchTargetChange(index, event.target.value)}
+                      fullWidth
+                    />
+                  </Stack>
                 ))
               )}
             </Stack>

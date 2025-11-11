@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { Stack, TextField, Typography } from "@mui/material";
+import { TextField, Typography } from "@mui/material";
 import { parseNumber } from "../utils/workflowBuilder.js";
 
 export default function ScrollConfigFields({ config, onChange }) {
@@ -8,25 +8,21 @@ export default function ScrollConfigFields({ config, onChange }) {
   };
 
   return (
-    <Stack spacing={1.5}>
-      <Typography variant="subtitle2">Scroll settings</Typography>
-      <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-        <TextField
-          label="dx"
-          type="number"
-          value={config.dx ?? ""}
-          onChange={handleChange("dx")}
-          fullWidth
-        />
-        <TextField
-          label="dy"
-          type="number"
-          value={config.dy ?? ""}
-          onChange={handleChange("dy")}
-          fullWidth
-        />
-      </Stack>
-    </Stack>
+    <>
+      <Typography>Scroll settings</Typography>
+      <TextField
+        label="dx"
+        type="number"
+        value={config.dx ?? ""}
+        onChange={handleChange("dx")}
+      />
+      <TextField
+        label="dy"
+        type="number"
+        value={config.dy ?? ""}
+        onChange={handleChange("dy")}
+      />
+    </>
   );
 }
 
