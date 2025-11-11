@@ -1,9 +1,13 @@
 import PropTypes from "prop-types";
 import { useEffect, useRef } from "react";
+import { Box, useMediaQuery, useTheme } from "@mui/material";
 import PixiProjection from "../../../workflow-graph/projection/pixi-projection.js";
 
-export default function GraphViewport({ graphCore, height }) {
+export default function GraphViewport({ graphCore }) {
   const containerRef = useRef(null);
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up("sm"));
+  const navHeight = isDesktop ? 64 : 56;
 
   useEffect(() => {
     if (!graphCore || !containerRef.current) return undefined;
@@ -16,22 +20,23 @@ export default function GraphViewport({ graphCore, height }) {
     };
   }, [graphCore]);
 
-  const resolvedHeight =
-    typeof height === "number" ? `${height}px` : height || "360px";
-
   return (
-    <div style={{ width: "100%", height: resolvedHeight }}>
-      <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
-    </div>
+    <Box
+      sx={{
+        width: "100%",
+        height: `calc(100vh - ${navHeight}px)`,
+        overflow: "hidden",
+      }}
+    >
+      <Box ref={containerRef} sx={{ width: "100%", height: "100%" }} />
+    </Box>
   );
 }
 
 GraphViewport.propTypes = {
   graphCore: PropTypes.object,
-  height: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
 };
 
 GraphViewport.defaultProps = {
   graphCore: null,
-  height: 360,
 };

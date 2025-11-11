@@ -3,7 +3,6 @@ import PropTypes from "prop-types";
 import {
   Alert,
   Button,
-  Divider,
   MenuItem,
   Stack,
   TextField,
@@ -96,8 +95,8 @@ export default function NodeDetailPanel({
 
   if (!node) {
     return (
-      <Stack spacing={1}>
-        <Typography variant="body2" color="text.secondary">
+      <Stack>
+        <Typography>
           Select a node from the list to edit its configuration.
         </Typography>
       </Stack>
@@ -222,131 +221,97 @@ export default function NodeDetailPanel({
   };
 
   return (
-    <Stack spacing={3}>
-      <Stack spacing={1}>
-        <Typography variant="h6">Node details</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Use the Save button to persist your changes.
-        </Typography>
-        {saving ? (
-          <Typography variant="caption" color="text.secondary">
-            Saving…
-          </Typography>
-        ) : null}
+    <Stack>
+      <Stack>
+        <Typography>Node details</Typography>
+        <Typography>Use the Save button to persist your changes.</Typography>
+        {saving ? <Typography>Saving…</Typography> : null}
       </Stack>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
 
-      <Stack spacing={2} divider={<Divider flexItem />}>
-        <Stack spacing={2}>
-          <Stack direction={{ xs: "column", lg: "row" }} spacing={2}>
-            <TextField
-              label="Node key"
-              value={node.nodeKey ?? ""}
-              onChange={handleFieldChange("nodeKey")}
-              fullWidth
-            />
-            <TextField
-              select
-              label="Node type"
-              value={node.type}
-              onChange={handleTypeChange}
-              fullWidth
-            >
-              {NODE_TYPES.map((type) => (
-                <MenuItem key={type} value={type}>
-                  {type}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Stack>
-          <TextField
-            label="Label"
-            value={node.label ?? ""}
-            onChange={handleFieldChange("label")}
-            fullWidth
-          />
-        </Stack>
+      <Stack>
+        <TextField
+          label="Node key"
+          value={node.nodeKey ?? ""}
+          onChange={handleFieldChange("nodeKey")}
+        />
+        <TextField
+          select
+          label="Node type"
+          value={node.type}
+          onChange={handleTypeChange}
+        >
+          {NODE_TYPES.map((type) => (
+            <MenuItem key={type} value={type}>
+              {type}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          label="Label"
+          value={node.label ?? ""}
+          onChange={handleFieldChange("label")}
+        />
 
         {isIfNode ? (
-          <Stack spacing={1.5}>
-            <Stack spacing={1}>
-              <Typography variant="subtitle2">Branches</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Branches are evaluated from top to bottom. The first matching
-                condition runs its target node.
+          <Stack>
+            <Typography>Branches</Typography>
+            <Typography>
+              Branches are evaluated from top to bottom. The first matching
+              condition runs its target node.
+            </Typography>
+            {ifBranches.length === 0 ? (
+              <Typography>
+                No branches yet. Add a branch to configure conditional flows.
               </Typography>
-            </Stack>
-            <Stack spacing={1.5}>
-              {ifBranches.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  No branches yet. Add a branch to configure conditional flows.
-                </Typography>
-              ) : (
-                ifBranches.map((branch, index) => (
-                  <Stack key={branch.edgeKey || index} spacing={1.25}>
-                    <Stack
-                      direction="row"
-                      justifyContent="space-between"
-                      alignItems="center"
-                    >
-                      <Typography variant="subtitle2">
-                        Branch {index + 1}
-                      </Typography>
-                      <Button
-                        color="error"
-                        size="small"
-                        onClick={() => handleRemoveIfBranch(index)}
-                      >
-                        Remove
-                      </Button>
-                    </Stack>
-                    <ConditionEditor
-                      value={branch.condition}
-                      onChange={(condition) =>
-                        handleIfBranchConditionChange(index, condition)
-                      }
-                    />
-                    <TextField
-                      label="Target node"
-                      value={branch.targetKey ?? ""}
-                      onChange={(event) =>
-                        handleIfBranchTargetChange(index, event.target.value)
-                      }
-                      fullWidth
-                    />
+            ) : (
+              ifBranches.map((branch, index) => (
+                <Stack key={branch.edgeKey || index}>
+                  <Stack>
+                    <Typography>Branch {index + 1}</Typography>
+                    <Button onClick={() => handleRemoveIfBranch(index)}>
+                      Remove
+                    </Button>
                   </Stack>
-                ))
-              )}
-            </Stack>
-            <Button variant="outlined" size="small" onClick={handleAddIfBranch}>
-              Add branch
-            </Button>
+                  <ConditionEditor
+                    value={branch.condition}
+                    onChange={(condition) =>
+                      handleIfBranchConditionChange(index, condition)
+                    }
+                  />
+                  <TextField
+                    label="Target node"
+                    value={branch.targetKey ?? ""}
+                    onChange={(event) =>
+                      handleIfBranchTargetChange(index, event.target.value)
+                    }
+                  />
+                </Stack>
+              ))
+            )}
+            <Button onClick={handleAddIfBranch}>Add branch</Button>
             <TextField
               label="Else target node"
               value={ifElseTarget}
               onChange={(event) => handleIfElseChange(event.target.value)}
-              helperText="Executed when no branch condition is met."
-              fullWidth
             />
           </Stack>
         ) : (
-          <Stack spacing={1}>
-            <Typography variant="subtitle2">Next node</Typography>
+          <Stack>
+            <Typography>Next node</Typography>
             <TextField
               label="Target node key"
               value={defaultTarget}
               onChange={(event) =>
                 handleDefaultTargetChange(event.target.value)
               }
-              helperText="Leave empty to end the workflow after this node."
-              fullWidth
             />
           </Stack>
         )}
 
-        <Stack spacing={1}>
-          <Typography variant="subtitle2">Configuration</Typography>
+        <Stack>
+          <Typography>Configuration</Typography>
           <NodeConfigFields
             type={node.type}
             config={node.config}
@@ -355,19 +320,8 @@ export default function NodeDetailPanel({
         </Stack>
       </Stack>
 
-      <Stack
-        direction="row"
-        justifyContent="flex-end"
-        spacing={1}
-        alignItems="center"
-      >
-        <Button
-          variant="contained"
-          color="error"
-          size="small"
-          onClick={onDelete}
-          disabled={!canDelete || saving}
-        >
+      <Stack>
+        <Button onClick={onDelete} disabled={!canDelete || saving}>
           Delete
         </Button>
       </Stack>
@@ -421,7 +375,6 @@ function ConditionEditor({ value, onChange }) {
             [type]: { xpath: event.target.value },
           })
         }
-        fullWidth
       />
     );
   } else if (type === "urlIncludes") {
@@ -434,7 +387,6 @@ function ConditionEditor({ value, onChange }) {
             urlIncludes: event.target.value,
           })
         }
-        fullWidth
       />
     );
   } else if (type === "delay") {
@@ -448,7 +400,6 @@ function ConditionEditor({ value, onChange }) {
             delay: parseNumber(event.target.value) ?? 1,
           })
         }
-        fullWidth
       />
     );
   } else if (type === "script") {
@@ -461,21 +412,18 @@ function ConditionEditor({ value, onChange }) {
             script: { code: event.target.value },
           })
         }
-        fullWidth
         multiline
-        minRows={3}
       />
     );
   }
 
   return (
-    <Stack spacing={1.25}>
+    <Stack>
       <TextField
         select
         label="Condition type"
         value={type}
         onChange={handleTypeChange}
-        fullWidth
       >
         {BRANCH_CONDITION_TYPES.map((option) => (
           <MenuItem key={option.value} value={option.value}>

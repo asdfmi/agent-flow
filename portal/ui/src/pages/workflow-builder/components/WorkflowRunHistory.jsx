@@ -33,66 +33,51 @@ export default function WorkflowRunHistory({
   onRefresh,
 }) {
   return (
-    <Stack spacing={2}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Typography variant="subtitle1">Recent runs</Typography>
-        <IconButton size="small" onClick={onRefresh}>
-          <RefreshIcon fontSize="small" />
+    <Stack>
+      <Stack>
+        <Typography>Recent runs</Typography>
+        <IconButton onClick={onRefresh}>
+          <RefreshIcon />
         </IconButton>
       </Stack>
       {loading ? (
-        <Stack direction="row" spacing={1} alignItems="center">
-          <CircularProgress size={16} />
-          <Typography variant="body2" color="text.secondary">
-            Loading runs...
-          </Typography>
+        <Stack>
+          <CircularProgress />
+          <Typography>Loading runs...</Typography>
         </Stack>
       ) : error ? (
         <Alert severity="error">{error}</Alert>
       ) : runs.length === 0 ? (
-        <Paper variant="outlined">
-          <Typography variant="body2" color="text.secondary">
-            No runs recorded yet.
-          </Typography>
+        <Paper>
+          <Typography>No runs recorded yet.</Typography>
         </Paper>
       ) : (
-        <Stack spacing={1.5}>
+        <Stack>
           {runs.map((run) => (
-            <Paper key={run.id} variant="outlined">
-              <Stack
-                direction={{ xs: "column", md: "row" }}
-                spacing={1}
-                justifyContent="space-between"
-                alignItems={{ xs: "flex-start", md: "center" }}
-              >
-                <Stack spacing={0.5}>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <Typography variant="subtitle2" noWrap>
-                      {run.runKey || `Run #${run.id}`}
-                    </Typography>
-                    <Chip
-                      size="small"
-                      label={run.status}
-                      color={statusColor(run.status)}
-                    />
-                  </Stack>
-                  <Typography variant="caption" color="text.secondary">
-                    Started:{" "}
-                    {run.startedAt
-                      ? new Date(run.startedAt).toLocaleString()
-                      : "-"}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Finished:{" "}
-                    {run.finishedAt
-                      ? new Date(run.finishedAt).toLocaleString()
-                      : "—"}
-                  </Typography>
+            <Paper key={run.id}>
+              <Stack>
+                <Stack>
+                  <Typography>{run.runKey || `Run #${run.id}`}</Typography>
+                  <Chip
+                    size="small"
+                    label={run.status}
+                    color={statusColor(run.status)}
+                  />
                 </Stack>
+                <Typography>
+                  Started:{" "}
+                  {run.startedAt
+                    ? new Date(run.startedAt).toLocaleString()
+                    : "-"}
+                </Typography>
+                <Typography>
+                  Finished:{" "}
+                  {run.finishedAt
+                    ? new Date(run.finishedAt).toLocaleString()
+                    : "—"}
+                </Typography>
                 {run.errorMessage ? (
-                  <Typography variant="caption" color="error">
-                    {run.errorMessage}
-                  </Typography>
+                  <Typography>{run.errorMessage}</Typography>
                 ) : null}
               </Stack>
             </Paper>
