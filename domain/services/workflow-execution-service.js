@@ -1,6 +1,6 @@
-import { randomUUID } from 'node:crypto';
-import { NotFoundError } from '../errors.js';
-import WorkflowExecution from '../aggregates/workflow-execution.js';
+import { randomUUID } from "node:crypto";
+import { NotFoundError } from "../errors.js";
+import WorkflowExecution from "../aggregates/workflow-execution.js";
 
 const coerceDate = (value) => {
   if (!value) return new Date();
@@ -8,12 +8,9 @@ const coerceDate = (value) => {
 };
 
 export default class WorkflowExecutionService {
-  constructor({
-    executionRepo,
-    idGenerator = () => randomUUID(),
-  } = {}) {
+  constructor({ executionRepo, idGenerator = () => randomUUID() } = {}) {
     if (!executionRepo) {
-      throw new Error('executionRepo is required');
+      throw new Error("executionRepo is required");
     }
     this.executionRepo = executionRepo;
     this.idGenerator = idGenerator;
@@ -33,9 +30,16 @@ export default class WorkflowExecutionService {
     });
   }
 
-  async completeNode(executionId, nodeId, { outputs = null, timestamp = new Date() } = {}) {
+  async completeNode(
+    executionId,
+    nodeId,
+    { outputs = null, timestamp = new Date() } = {},
+  ) {
     return this.#mutateExecution(executionId, async (execution) => {
-      execution.completeNode(nodeId, { outputs, timestamp: coerceDate(timestamp) });
+      execution.completeNode(nodeId, {
+        outputs,
+        timestamp: coerceDate(timestamp),
+      });
     });
   }
 
@@ -87,7 +91,9 @@ export default class WorkflowExecutionService {
     await this.executionRepo.update(execution);
     const refreshed = await this.executionRepo.findById(executionId);
     if (!refreshed) {
-      throw new NotFoundError(`Execution ${executionId} not found after update`);
+      throw new NotFoundError(
+        `Execution ${executionId} not found after update`,
+      );
     }
     return this.#toExecutionView(refreshed);
   }

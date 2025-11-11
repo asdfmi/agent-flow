@@ -16,7 +16,8 @@ export default function GraphViewport({ graphCore, height }) {
     };
   }, [graphCore]);
 
-  const resolvedHeight = typeof height === "number" ? `${height}px` : (height || "360px");
+  const resolvedHeight =
+    typeof height === "number" ? `${height}px` : height || "360px";
 
   return (
     <div style={{ width: "100%", height: resolvedHeight }}>

@@ -15,5 +15,6 @@ FallbackConfigFields.propTypes = {
 };
 
 FallbackConfigFields.defaultProps = {
-  description: "Use the success condition area below to wait for a delay or element.",
+  description:
+    "Use the success condition area below to wait for a delay or element.",
 };

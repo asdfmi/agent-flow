@@ -1,6 +1,6 @@
-import { WorkflowRepository as WorkflowRepositoryContract } from '@agent-flow/domain';
-import prisma from '../../prisma/client.js';
-import { toDomainWorkflow } from './mappers/workflow-mapper.js';
+import { WorkflowRepository as WorkflowRepositoryContract } from "@agent-flow/domain";
+import prisma from "../../prisma/client.js";
+import { toDomainWorkflow } from "./mappers/workflow-mapper.js";
 
 const ensureClient = (client) => client ?? prisma;
 
@@ -11,8 +11,8 @@ export default class PrismaWorkflowRepository extends WorkflowRepositoryContract
   }
 
   async save({ workflow, definition, metadata = {} }) {
-    if (!workflow) throw new Error('workflow is required');
-    if (!definition) throw new Error('definition payload is required');
+    if (!workflow) throw new Error("workflow is required");
+    if (!definition) throw new Error("definition payload is required");
     const client = ensureClient(this.client);
     await client.$transaction(async (tx) => {
       await tx.workflow.upsert({
@@ -29,7 +29,9 @@ export default class PrismaWorkflowRepository extends WorkflowRepositoryContract
       });
       await tx.workflowNode.deleteMany({ where: { workflowId: workflow.id } });
       await tx.workflowEdge.deleteMany({ where: { workflowId: workflow.id } });
-      await tx.workflowDataBinding.deleteMany({ where: { workflowId: workflow.id } });
+      await tx.workflowDataBinding.deleteMany({
+        where: { workflowId: workflow.id },
+      });
       if (definition.nodes.length > 0) {
         await tx.workflowNode.createMany({
           data: definition.nodes.map((node) => ({
@@ -40,8 +42,10 @@ export default class PrismaWorkflowRepository extends WorkflowRepositoryContract
             config: node.config ?? null,
             inputs: node.inputs ?? [],
             outputs: node.outputs ?? [],
-            positionX: typeof node.positionX === 'number' ? node.positionX : null,
-            positionY: typeof node.positionY === 'number' ? node.positionY : null,
+            positionX:
+              typeof node.positionX === "number" ? node.positionX : null,
+            positionY:
+              typeof node.positionY === "number" ? node.positionY : null,
           })),
         });
       }
@@ -111,7 +115,7 @@ export default class PrismaWorkflowRepository extends WorkflowRepositoryContract
   async listSummaries() {
     const client = ensureClient(this.client);
     const rows = await client.workflow.findMany({
-      orderBy: { updatedAt: 'desc' },
+      orderBy: { updatedAt: "desc" },
     });
     return rows.map((row) => ({
       id: row.id,

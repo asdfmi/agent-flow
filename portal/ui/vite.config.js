@@ -12,8 +12,20 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        workflows: path.resolve(appDir, "src", "pages", "workflows", "index.html"),
-        workflowBuilder: path.resolve(appDir, "src", "pages", "workflow-builder", "index.html"),
+        workflows: path.resolve(
+          appDir,
+          "src",
+          "pages",
+          "workflows",
+          "index.html",
+        ),
+        workflowBuilder: path.resolve(
+          appDir,
+          "src",
+          "pages",
+          "workflow-builder",
+          "index.html",
+        ),
       },
       output: {
         manualChunks(id) {

@@ -1,4 +1,4 @@
-import { sleep } from '../utils.js';
+import { sleep } from "../utils.js";
 
 export default async function handleWait({ step }) {
   const durationMs = Number(step.config?.durationMs ?? 1000);

@@ -25,10 +25,14 @@ import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 
 const summarizeCondition = (condition) => {
   if (!condition) return "else";
-  if (condition.visible) return `if visible ${condition.visible.xpath || ""}`.trim();
-  if (condition.exists) return `if exists ${condition.exists.xpath || ""}`.trim();
-  if (typeof condition.urlIncludes === "string") return `if url includes "${condition.urlIncludes}"`;
-  if (typeof condition.delay === "number") return `if delay ${condition.delay}s`;
+  if (condition.visible)
+    return `if visible ${condition.visible.xpath || ""}`.trim();
+  if (condition.exists)
+    return `if exists ${condition.exists.xpath || ""}`.trim();
+  if (typeof condition.urlIncludes === "string")
+    return `if url includes "${condition.urlIncludes}"`;
+  if (typeof condition.delay === "number")
+    return `if delay ${condition.delay}s`;
   if (condition.script) return "if script true";
   return "if condition";
 };
@@ -46,7 +50,13 @@ export default function WorkflowNodeList({
   const [expandedNodes, setExpandedNodes] = useState({});
 
   const nodeMap = useMemo(
-    () => new Map(nodes.map((node, index) => [node.nodeKey ?? `node_${index + 1}`, { node, index }])),
+    () =>
+      new Map(
+        nodes.map((node, index) => [
+          node.nodeKey ?? `node_${index + 1}`,
+          { node, index },
+        ]),
+      ),
     [nodes],
   );
 
@@ -61,8 +71,10 @@ export default function WorkflowNodeList({
     });
     map.forEach((list) => {
       list.sort((a, b) => {
-        const ap = typeof a.priority === "number" ? a.priority : Number.MAX_SAFE_INTEGER;
-        const bp = typeof b.priority === "number" ? b.priority : Number.MAX_SAFE_INTEGER;
+        const ap =
+          typeof a.priority === "number" ? a.priority : Number.MAX_SAFE_INTEGER;
+        const bp =
+          typeof b.priority === "number" ? b.priority : Number.MAX_SAFE_INTEGER;
         return ap - bp;
       });
     });
@@ -74,7 +86,8 @@ export default function WorkflowNodeList({
     return nodes[0]?.nodeKey ?? null;
   }, [startNodeId, nodeMap, nodes]);
 
-  const getNodeLabel = (node, index) => node.label?.trim() || node.nodeKey || `Node ${index + 1}`;
+  const getNodeLabel = (node, index) =>
+    node.label?.trim() || node.nodeKey || `Node ${index + 1}`;
 
   const toggleExpand = (key) => {
     setExpandedNodes((prev) => ({ ...prev, [key]: !(prev[key] ?? true) }));
@@ -82,7 +95,9 @@ export default function WorkflowNodeList({
 
   const renderLinearHint = (edge, depth) => {
     const entry = nodeMap.get(edge.targetKey);
-    const label = entry ? getNodeLabel(entry.node, entry.index) : edge.targetKey || "End";
+    const label = entry
+      ? getNodeLabel(entry.node, entry.index)
+      : edge.targetKey || "End";
     return (
       <Stack direction="row" alignItems="center" spacing={1}>
         <ArrowDownwardIcon color="disabled" fontSize="small" />
@@ -95,7 +110,12 @@ export default function WorkflowNodeList({
 
   const renderedKeys = new Set();
 
-  const renderNode = (nodeKey, depth = 0, incomingEdge = null, visited = new Set()) => {
+  const renderNode = (
+    nodeKey,
+    depth = 0,
+    incomingEdge = null,
+    visited = new Set(),
+  ) => {
     if (!nodeKey || !nodeMap.has(nodeKey) || visited.has(nodeKey)) return null;
     const nextVisited = new Set(visited);
     nextVisited.add(nodeKey);
@@ -106,17 +126,26 @@ export default function WorkflowNodeList({
     const isExpanded = expandedNodes[nodeKey] ?? true;
     const isStart = startKey === nodeKey;
     const isActive = activeNodeKey ? activeNodeKey === nodeKey : false;
-    const conditionLabel = incomingEdge ? summarizeCondition(incomingEdge.condition) : null;
+    const conditionLabel = incomingEdge
+      ? summarizeCondition(incomingEdge.condition)
+      : null;
 
     renderedKeys.add(nodeKey);
 
     return (
       <Box key={`${nodeKey}-${depth}-${conditionLabel || "root"}`}>
-        <ListItemButton selected={selectedIndex === index} onClick={() => onSelectNode(index)}>
+        <ListItemButton
+          selected={selectedIndex === index}
+          onClick={() => onSelectNode(index)}
+        >
           <Stack direction="row" spacing={1} alignItems="center">
             <ListItemIcon>
               {isIfNode ? (
-                isExpanded ? <FolderOpenIcon fontSize="small" /> : <FolderIcon fontSize="small" />
+                isExpanded ? (
+                  <FolderOpenIcon fontSize="small" />
+                ) : (
+                  <FolderIcon fontSize="small" />
+                )
               ) : (
                 <InsertDriveFileIcon fontSize="small" />
               )}
@@ -136,8 +165,12 @@ export default function WorkflowNodeList({
             </Box>
             <Stack direction="row" spacing={0.5}>
               <Chip size="small" label={node.type} />
-              {isStart ? <Chip size="small" color="success" label="Start" /> : null}
-              {isActive ? <Chip size="small" color="primary" label="Active" /> : null}
+              {isStart ? (
+                <Chip size="small" color="success" label="Start" />
+              ) : null}
+              {isActive ? (
+                <Chip size="small" color="primary" label="Active" />
+              ) : null}
             </Stack>
             {hasChildren ? (
               <IconButton
@@ -147,7 +180,11 @@ export default function WorkflowNodeList({
                   toggleExpand(nodeKey);
                 }}
               >
-                {isExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                {isExpanded ? (
+                  <ExpandLessIcon fontSize="small" />
+                ) : (
+                  <ExpandMoreIcon fontSize="small" />
+                )}
               </IconButton>
             ) : null}
           </Stack>
@@ -156,7 +193,9 @@ export default function WorkflowNodeList({
           ? renderLinearHint(outgoing[0], depth)
           : null}
         {isIfNode && hasChildren && isExpanded
-          ? outgoing.map((edge) => renderNode(edge.targetKey, depth + 1, edge, nextVisited))
+          ? outgoing.map((edge) =>
+              renderNode(edge.targetKey, depth + 1, edge, nextVisited),
+            )
           : null}
       </Box>
     );
@@ -181,7 +220,9 @@ export default function WorkflowNodeList({
     return result;
   })();
 
-  const danglingNodes = nodes.filter((node) => node.nodeKey && !renderedKeys.has(node.nodeKey));
+  const danglingNodes = nodes.filter(
+    (node) => node.nodeKey && !renderedKeys.has(node.nodeKey),
+  );
 
   return (
     <Box>
@@ -217,7 +258,10 @@ export default function WorkflowNodeList({
               <ListItem>
                 <ListItemText
                   primary="No nodes yet. Use “New” to start building."
-                  primaryTypographyProps={{ variant: "body2", color: "text.secondary" }}
+                  primaryTypographyProps={{
+                    variant: "body2",
+                    color: "text.secondary",
+                  }}
                 />
               </ListItem>
             ) : (

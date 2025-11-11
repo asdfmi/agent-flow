@@ -13,7 +13,9 @@ export default function NavigateConfigFields({ config, onChange }) {
       <TextField
         label="waitUntil"
         value={config.waitUntil ?? ""}
-        onChange={(event) => onChange({ ...config, waitUntil: event.target.value })}
+        onChange={(event) =>
+          onChange({ ...config, waitUntil: event.target.value })
+        }
       />
     </>
   );

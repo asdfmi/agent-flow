@@ -16,7 +16,7 @@ export default class ExecutionContext {
 
   popScope() {
     if (this.scopes.length <= 1) {
-      throw new Error('cannot pop root scope');
+      throw new Error("cannot pop root scope");
     }
     this.scopes.pop();
   }

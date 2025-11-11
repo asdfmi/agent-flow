@@ -1,17 +1,14 @@
-import { randomUUID } from 'node:crypto';
-import { NotFoundError } from '../errors.js';
+import { randomUUID } from "node:crypto";
+import { NotFoundError } from "../errors.js";
 import {
   normalizeWorkflowStructure,
   serializeWorkflow,
-} from '../utils/workflow-structure.js';
+} from "../utils/workflow-structure.js";
 
 export default class WorkflowFactory {
-  constructor({
-    workflowRepo,
-    idGenerator = () => randomUUID(),
-  } = {}) {
+  constructor({ workflowRepo, idGenerator = () => randomUUID() } = {}) {
     if (!workflowRepo) {
-      throw new Error('workflowRepo is required');
+      throw new Error("workflowRepo is required");
     }
     this.workflowRepo = workflowRepo;
     this.idGenerator = idGenerator;
@@ -57,13 +54,15 @@ export default class WorkflowFactory {
       fromNodeId: nodeIdMap.get(edge.fromNodeId),
       toNodeId: edge.toNodeId ? nodeIdMap.get(edge.toNodeId) : null,
     }));
-    const duplicatedBindings = source.definition.dataBindings.map((binding) => ({
-      ...binding,
-      id: this.idGenerator(),
-      workflowId,
-      sourceNodeId: nodeIdMap.get(binding.sourceNodeId),
-      targetNodeId: nodeIdMap.get(binding.targetNodeId),
-    }));
+    const duplicatedBindings = source.definition.dataBindings.map(
+      (binding) => ({
+        ...binding,
+        id: this.idGenerator(),
+        workflowId,
+        sourceNodeId: nodeIdMap.get(binding.sourceNodeId),
+        targetNodeId: nodeIdMap.get(binding.targetNodeId),
+      }),
+    );
     const structure = normalizeWorkflowStructure({
       workflowId,
       name: overrides.name ?? `${source.metadata.name} Copy`,
@@ -78,7 +77,10 @@ export default class WorkflowFactory {
         edges: structure.edges,
         dataBindings: structure.dataBindings,
       },
-      metadata: { description: overrides.description ?? source.metadata.description ?? null },
+      metadata: {
+        description:
+          overrides.description ?? source.metadata.description ?? null,
+      },
     });
     return this.#loadWorkflowView(workflowId);
   }
@@ -99,7 +101,10 @@ export default class WorkflowFactory {
         edges: structure.edges,
         dataBindings: structure.dataBindings,
       },
-      metadata: { description: payload.description ?? current.metadata.description ?? null },
+      metadata: {
+        description:
+          payload.description ?? current.metadata.description ?? null,
+      },
     });
     return this.#loadWorkflowView(workflowId);
   }
@@ -107,7 +112,9 @@ export default class WorkflowFactory {
   async publishWorkflowDefinition(workflowId, { versionTag } = {}) {
     const snapshot = await this.#loadWorkflowSnapshot(workflowId);
     const publishedAt = new Date();
-    const version = versionTag ?? `${workflowId}:${snapshot.metadata.updatedAt?.getTime?.() ?? publishedAt.getTime()}`;
+    const version =
+      versionTag ??
+      `${workflowId}:${snapshot.metadata.updatedAt?.getTime?.() ?? publishedAt.getTime()}`;
     return {
       workflowId,
       version,

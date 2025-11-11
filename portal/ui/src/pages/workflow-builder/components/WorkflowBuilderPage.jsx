@@ -16,7 +16,11 @@ import { useWorkflowRun } from "../../../hooks/useWorkflowRun.js";
 import NodeDetailPanel from "./NodeDetailPanel.jsx";
 import WorkflowRunHistory from "./WorkflowRunHistory.jsx";
 import { useWorkflowBuilderForm } from "../hooks/useWorkflowBuilderForm.js";
-import { buildPayload, formatApiError, getBuilderContext } from "../utils/workflowBuilder.js";
+import {
+  buildPayload,
+  formatApiError,
+  getBuilderContext,
+} from "../utils/workflowBuilder.js";
 import GraphViewport from "./GraphViewport.jsx";
 import { HttpError } from "../../../api/client.js";
 import {
@@ -26,8 +30,13 @@ import {
 } from "../../../api/workflows.js";
 
 export default function WorkflowBuilderPage() {
-  const builderContext = useMemo(() => getBuilderContext(window.location.pathname), []);
-  const [workflowId, setWorkflowId] = useState(builderContext.workflowId ?? null);
+  const builderContext = useMemo(
+    () => getBuilderContext(window.location.pathname),
+    [],
+  );
+  const [workflowId, setWorkflowId] = useState(
+    builderContext.workflowId ?? null,
+  );
   const isNewWorkflow = !workflowId;
   const {
     workflowState,
@@ -56,7 +65,11 @@ export default function WorkflowBuilderPage() {
   const [isViewerOpen, setViewerOpen] = useState(false);
   const [isSaving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const [runsState, setRunsState] = useState({ loading: true, data: [], error: "" });
+  const [runsState, setRunsState] = useState({
+    loading: true,
+    data: [],
+    error: "",
+  });
   const [hasPendingChanges, setHasPendingChanges] = useState(false);
 
   const hydratingRef = useRef(true);
@@ -72,30 +85,50 @@ export default function WorkflowBuilderPage() {
   const metaTitleChange = handleMetaChange("title");
   const metaDescriptionChange = handleMetaChange("description");
 
-  const applyWorkflowData = useCallback((data, options = {}) => {
-    if (!data) return;
-    hydratingRef.current = true;
-    syncFromWorkflow(data, { preserveSelection: true, force: true, ...options });
-  }, [syncFromWorkflow]);
+  const applyWorkflowData = useCallback(
+    (data, options = {}) => {
+      if (!data) return;
+      hydratingRef.current = true;
+      syncFromWorkflow(data, {
+        preserveSelection: true,
+        force: true,
+        ...options,
+      });
+    },
+    [syncFromWorkflow],
+  );
 
-  const persistWorkflow = useCallback(async (formOverride, { silent = false } = {}) => {
-    const targetForm = formOverride ?? latestFormRef.current;
-    if (!targetForm) return false;
-    setSaving(true);
-    if (!silent) setSaveError("");
-    try {
-      const payload = buildPayload(targetForm);
-      if (!workflowId) {
-        const response = await createWorkflowApi(payload);
-        const workflowData = response?.data;
-        if (workflowData?.id) {
-          setWorkflowId(workflowData.id);
-          window.history.replaceState(
-            null,
-            "",
-            `/workflow/${encodeURIComponent(String(workflowData.id))}`,
-          );
+  const persistWorkflow = useCallback(
+    async (formOverride, { silent = false } = {}) => {
+      const targetForm = formOverride ?? latestFormRef.current;
+      if (!targetForm) return false;
+      setSaving(true);
+      if (!silent) setSaveError("");
+      try {
+        const payload = buildPayload(targetForm);
+        if (!workflowId) {
+          const response = await createWorkflowApi(payload);
+          const workflowData = response?.data;
+          if (workflowData?.id) {
+            setWorkflowId(workflowData.id);
+            window.history.replaceState(
+              null,
+              "",
+              `/workflow/${encodeURIComponent(String(workflowData.id))}`,
+            );
+          }
+          if (workflowData) {
+            applyWorkflowData(workflowData);
+            setSaveError("");
+            lastSavedSnapshotRef.current = JSON.stringify(targetForm);
+            latestFormRef.current = targetForm;
+            setHasPendingChanges(false);
+            return true;
+          }
+          throw new Error("Failed to create workflow");
         }
+        const response = await updateWorkflowApi(workflowId, payload);
+        const workflowData = response?.data;
         if (workflowData) {
           applyWorkflowData(workflowData);
           setSaveError("");
@@ -104,67 +137,66 @@ export default function WorkflowBuilderPage() {
           setHasPendingChanges(false);
           return true;
         }
-        throw new Error("Failed to create workflow");
+        const refreshed = await reloadWorkflow();
+        if (refreshed?.ok && refreshed.data) {
+          applyWorkflowData(refreshed.data);
+          setSaveError("");
+          lastSavedSnapshotRef.current = JSON.stringify(targetForm);
+          latestFormRef.current = targetForm;
+          setHasPendingChanges(false);
+          return true;
+        }
+        const fallbackError = refreshed?.error || "Failed to refresh workflow";
+        setSaveError(fallbackError);
+        return false;
+      } catch (error) {
+        if (error instanceof HttpError) {
+          const formatted = formatApiError(
+            error.data && typeof error.data === "object"
+              ? error.data
+              : { error: error.message },
+          );
+          setSaveError(formatted);
+        } else {
+          const message =
+            error instanceof Error ? error.message : "Failed to save workflow";
+          setSaveError(message);
+        }
+        return false;
+      } finally {
+        setSaving(false);
       }
-      const response = await updateWorkflowApi(workflowId, payload);
-      const workflowData = response?.data;
-      if (workflowData) {
-        applyWorkflowData(workflowData);
-        setSaveError("");
-        lastSavedSnapshotRef.current = JSON.stringify(targetForm);
-        latestFormRef.current = targetForm;
-        setHasPendingChanges(false);
-        return true;
-      }
-      const refreshed = await reloadWorkflow();
-      if (refreshed?.ok && refreshed.data) {
-        applyWorkflowData(refreshed.data);
-        setSaveError("");
-        lastSavedSnapshotRef.current = JSON.stringify(targetForm);
-        latestFormRef.current = targetForm;
-        setHasPendingChanges(false);
-        return true;
-      }
-      const fallbackError = refreshed?.error || "Failed to refresh workflow";
-      setSaveError(fallbackError);
-      return false;
-    } catch (error) {
-      if (error instanceof HttpError) {
-        const formatted = formatApiError(
-          error.data && typeof error.data === "object"
-            ? error.data
-            : { error: error.message }
-        );
-        setSaveError(formatted);
-      } else {
-        const message = error instanceof Error ? error.message : "Failed to save workflow";
-        setSaveError(message);
-      }
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }, [workflowId, applyWorkflowData, reloadWorkflow, setSaveError, setSaving]);
+    },
+    [workflowId, applyWorkflowData, reloadWorkflow, setSaveError, setSaving],
+  );
 
-  const fetchRuns = useCallback(async ({ signal, silent = false } = {}) => {
-    if (!workflowId) {
-      setRunsState({ loading: false, data: [], error: "" });
-      return;
-    }
-    if (!silent) {
-      setRunsState((prev) => ({ ...prev, loading: true, error: "" }));
-    }
-    try {
-      const payload = await listWorkflowRuns(workflowId, signal ? { signal } : undefined);
-      const rows = Array.isArray(payload.data) ? payload.data : [];
-      setRunsState({ loading: false, data: rows, error: "" });
-    } catch (error) {
-      if (signal?.aborted) return;
-      const message =
-        error instanceof Error ? error.message : "Failed to load workflow runs";
-      setRunsState({ loading: false, data: [], error: message });
-    }
-  }, [workflowId]);
+  const fetchRuns = useCallback(
+    async ({ signal, silent = false } = {}) => {
+      if (!workflowId) {
+        setRunsState({ loading: false, data: [], error: "" });
+        return;
+      }
+      if (!silent) {
+        setRunsState((prev) => ({ ...prev, loading: true, error: "" }));
+      }
+      try {
+        const payload = await listWorkflowRuns(
+          workflowId,
+          signal ? { signal } : undefined,
+        );
+        const rows = Array.isArray(payload.data) ? payload.data : [];
+        setRunsState({ loading: false, data: rows, error: "" });
+      } catch (error) {
+        if (signal?.aborted) return;
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to load workflow runs";
+        setRunsState({ loading: false, data: [], error: message });
+      }
+    },
+    [workflowId],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -191,20 +223,26 @@ export default function WorkflowBuilderPage() {
     setSaveError("");
   }, [handleAddNode]);
 
-  const handleNodePartialChange = useCallback((updates) => {
-    if (selectedIndex < 0) return;
-    setSaveError("");
-    const nextForm = handleNodeChange(selectedIndex, updates);
-    if (nextForm) {
-      latestFormRef.current = nextForm;
-    }
-  }, [selectedIndex, handleNodeChange]);
+  const handleNodePartialChange = useCallback(
+    (updates) => {
+      if (selectedIndex < 0) return;
+      setSaveError("");
+      const nextForm = handleNodeChange(selectedIndex, updates);
+      if (nextForm) {
+        latestFormRef.current = nextForm;
+      }
+    },
+    [selectedIndex, handleNodeChange],
+  );
 
   const handleRefreshWorkflow = useCallback(() => {
     if (!workflowId) return;
     reloadWorkflow().then((result) => {
       if (result?.ok && result.data) {
-        applyWorkflowData(result.data, { preserveSelection: true, force: true });
+        applyWorkflowData(result.data, {
+          preserveSelection: true,
+          force: true,
+        });
       }
     });
   }, [workflowId, reloadWorkflow, applyWorkflowData]);
@@ -248,14 +286,17 @@ export default function WorkflowBuilderPage() {
     return form.edges.filter((edge) => edge.sourceKey === selectedNodeKey);
   }, [form.edges, selectedNodeKey]);
 
-  const handleNodeEdgesChange = useCallback((nextEdges) => {
-    if (!selectedNodeKey) return;
-    setSaveError("");
-    const nextForm = replaceEdgesForNode(selectedNodeKey, () => nextEdges);
-    if (nextForm) {
-      latestFormRef.current = nextForm;
-    }
-  }, [replaceEdgesForNode, selectedNodeKey]);
+  const handleNodeEdgesChange = useCallback(
+    (nextEdges) => {
+      if (!selectedNodeKey) return;
+      setSaveError("");
+      const nextForm = replaceEdgesForNode(selectedNodeKey, () => nextEdges);
+      if (nextForm) {
+        latestFormRef.current = nextForm;
+      }
+    },
+    [replaceEdgesForNode, selectedNodeKey],
+  );
 
   const handleRefreshRuns = useCallback(() => {
     fetchRuns({});
@@ -277,9 +318,7 @@ export default function WorkflowBuilderPage() {
       <Container>
         <Stack>
           <CircularProgress />
-          <Typography>
-            Loading...
-          </Typography>
+          <Typography>Loading...</Typography>
         </Stack>
       </Container>
     );
@@ -312,16 +351,26 @@ export default function WorkflowBuilderPage() {
                 }}
               />
               <Stack>
-                <Button onClick={handleSave} disabled={isSaving || !hasPendingChanges}>
+                <Button
+                  onClick={handleSave}
+                  disabled={isSaving || !hasPendingChanges}
+                >
                   Save
                 </Button>
                 <Button
                   onClick={onRun}
-                  disabled={!workflowId || runState.status === "starting" || runState.status === "queued"}
+                  disabled={
+                    !workflowId ||
+                    runState.status === "starting" ||
+                    runState.status === "queued"
+                  }
                 >
                   Run
                 </Button>
-                <Button onClick={() => setViewerOpen(true)} disabled={!workflowId}>
+                <Button
+                  onClick={() => setViewerOpen(true)}
+                  disabled={!workflowId}
+                >
                   Viewer
                 </Button>
               </Stack>
@@ -351,13 +400,16 @@ export default function WorkflowBuilderPage() {
                     {node.label || node.nodeKey}
                   </MenuItem>
                 ))}
-                {form.nodes.length === 0 ? <MenuItem value="">No nodes</MenuItem> : null}
+                {form.nodes.length === 0 ? (
+                  <MenuItem value="">No nodes</MenuItem>
+                ) : null}
               </TextField>
               <Stack>
-                <Button onClick={handleAddNodeAndEdit}>
-                  Add node
-                </Button>
-                <Button onClick={handleDeleteSelectedNode} disabled={!canDeleteNode}>
+                <Button onClick={handleAddNodeAndEdit}>Add node</Button>
+                <Button
+                  onClick={handleDeleteSelectedNode}
+                  disabled={!canDeleteNode}
+                >
                   Delete node
                 </Button>
                 <Button
@@ -379,22 +431,23 @@ export default function WorkflowBuilderPage() {
             </Stack>
             {isNewWorkflow ? (
               <Alert severity="info">
-                This workflow is not saved yet. Add nodes and press Save to create it.
+                This workflow is not saved yet. Add nodes and press Save to
+                create it.
               </Alert>
             ) : null}
-            {(runError || saveError || (loadError && workflowState.data)) ? (
+            {runError || saveError || (loadError && workflowState.data) ? (
               <Stack>
                 {runError ? <Alert severity="error">{runError}</Alert> : null}
                 {saveError ? (
                   <Alert severity="error">
                     {saveError.split(/\n+/).map((line, index) => (
-                      <Typography key={`${line}-${index}`}>
-                        {line}
-                      </Typography>
+                      <Typography key={`${line}-${index}`}>{line}</Typography>
                     ))}
                   </Alert>
                 ) : null}
-                {loadError && workflowState.data ? <Alert severity="warning">{loadError}</Alert> : null}
+                {loadError && workflowState.data ? (
+                  <Alert severity="warning">{loadError}</Alert>
+                ) : null}
               </Stack>
             ) : null}
           </Stack>

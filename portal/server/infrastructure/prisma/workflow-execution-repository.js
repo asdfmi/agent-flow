@@ -1,10 +1,10 @@
-import { WorkflowExecutionRepository as WorkflowExecutionRepositoryContract } from '@agent-flow/domain';
-import prisma from '../../prisma/client.js';
+import { WorkflowExecutionRepository as WorkflowExecutionRepositoryContract } from "@agent-flow/domain";
+import prisma from "../../prisma/client.js";
 import {
   toDomainWorkflowExecution,
   toNodeExecutionData,
   toMetricData,
-} from './mappers/workflow-execution-mapper.js';
+} from "./mappers/workflow-execution-mapper.js";
 
 const ensureClient = (client) => client ?? prisma;
 
@@ -15,7 +15,7 @@ export default class PrismaWorkflowExecutionRepository extends WorkflowExecution
   }
 
   async create(execution) {
-    if (!execution) throw new Error('execution is required');
+    if (!execution) throw new Error("execution is required");
     const client = ensureClient(this.client);
     await client.$transaction(async (tx) => {
       await tx.workflowExecution.create({
@@ -23,12 +23,14 @@ export default class PrismaWorkflowExecutionRepository extends WorkflowExecution
           id: execution.id,
           workflowId: execution.workflowId,
           status: execution.status,
-          result: execution.result ? {
-            success: execution.result.success,
-            outputs: execution.result.outputs,
-            error: execution.result.error,
-            finishedAt: execution.result.finishedAt,
-          } : null,
+          result: execution.result
+            ? {
+                success: execution.result.success,
+                outputs: execution.result.outputs,
+                error: execution.result.error,
+                finishedAt: execution.result.finishedAt,
+              }
+            : null,
           startedAt: execution.startedAt ?? null,
           completedAt: execution.completedAt ?? null,
         },
@@ -36,7 +38,9 @@ export default class PrismaWorkflowExecutionRepository extends WorkflowExecution
       const nodeExecutions = execution.getNodeExecutions();
       if (nodeExecutions.length > 0) {
         await tx.nodeExecution.createMany({
-          data: nodeExecutions.map((nodeExecution) => toNodeExecutionData(execution.id, nodeExecution)),
+          data: nodeExecutions.map((nodeExecution) =>
+            toNodeExecutionData(execution.id, nodeExecution),
+          ),
         });
       }
       const metrics = execution.getMetrics();
@@ -49,29 +53,37 @@ export default class PrismaWorkflowExecutionRepository extends WorkflowExecution
   }
 
   async update(execution) {
-    if (!execution) throw new Error('execution is required');
+    if (!execution) throw new Error("execution is required");
     const client = ensureClient(this.client);
     await client.$transaction(async (tx) => {
       await tx.workflowExecution.update({
         where: { id: execution.id },
         data: {
           status: execution.status,
-          result: execution.result ? {
-            success: execution.result.success,
-            outputs: execution.result.outputs,
-            error: execution.result.error,
-            finishedAt: execution.result.finishedAt,
-          } : null,
+          result: execution.result
+            ? {
+                success: execution.result.success,
+                outputs: execution.result.outputs,
+                error: execution.result.error,
+                finishedAt: execution.result.finishedAt,
+              }
+            : null,
           startedAt: execution.startedAt ?? null,
           completedAt: execution.completedAt ?? null,
         },
       });
-      await tx.nodeExecution.deleteMany({ where: { workflowExecutionId: execution.id } });
-      await tx.executionMetric.deleteMany({ where: { workflowExecutionId: execution.id } });
+      await tx.nodeExecution.deleteMany({
+        where: { workflowExecutionId: execution.id },
+      });
+      await tx.executionMetric.deleteMany({
+        where: { workflowExecutionId: execution.id },
+      });
       const nodeExecutions = execution.getNodeExecutions();
       if (nodeExecutions.length > 0) {
         await tx.nodeExecution.createMany({
-          data: nodeExecutions.map((nodeExecution) => toNodeExecutionData(execution.id, nodeExecution)),
+          data: nodeExecutions.map((nodeExecution) =>
+            toNodeExecutionData(execution.id, nodeExecution),
+          ),
         });
       }
       const metrics = execution.getMetrics();
@@ -104,7 +116,7 @@ export default class PrismaWorkflowExecutionRepository extends WorkflowExecution
   async listSummaries() {
     const client = ensureClient(this.client);
     const rows = await client.workflowExecution.findMany({
-      orderBy: { updatedAt: 'desc' },
+      orderBy: { updatedAt: "desc" },
       select: {
         id: true,
         workflowId: true,

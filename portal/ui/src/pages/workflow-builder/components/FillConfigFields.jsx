@@ -1,5 +1,10 @@
 import PropTypes from "prop-types";
-import { Checkbox, FormControlLabel, TextField, Typography } from "@mui/material";
+import {
+  Checkbox,
+  FormControlLabel,
+  TextField,
+  Typography,
+} from "@mui/material";
 
 export default function FillConfigFields({ config, onChange }) {
   const setConfig = (updates) => onChange({ ...config, ...updates });

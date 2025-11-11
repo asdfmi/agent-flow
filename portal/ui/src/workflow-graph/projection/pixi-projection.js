@@ -3,7 +3,8 @@ import { Application, Container, Graphics, Rectangle, Text } from "pixi.js";
 const NODE_WIDTH = 184;
 const NODE_HEIGHT = 96;
 const HAS_WINDOW = typeof window !== "undefined";
-const DEFAULT_RESOLUTION = HAS_WINDOW && window.devicePixelRatio ? window.devicePixelRatio : 1;
+const DEFAULT_RESOLUTION =
+  HAS_WINDOW && window.devicePixelRatio ? window.devicePixelRatio : 1;
 
 const DEFAULT_THEME = {
   pixi: {
@@ -67,16 +68,19 @@ export default class PixiProjection {
 
     this.#attachStageListeners();
     this.#resize();
-    this.resizeObserver = HAS_WINDOW && typeof ResizeObserver !== "undefined"
-      ? new ResizeObserver(() => {
-        this.#resize();
-        this.#scheduleRender();
-      })
-      : null;
+    this.resizeObserver =
+      HAS_WINDOW && typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => {
+            this.#resize();
+            this.#scheduleRender();
+          })
+        : null;
     this.resizeObserver?.observe(container);
 
-    this.viewUnsubscribe = this.graphCore?.subscribeView(() => this.#scheduleRender()) ?? null;
-    this.stateUnsubscribe = this.graphCore?.subscribe(() => this.#scheduleRender()) ?? null;
+    this.viewUnsubscribe =
+      this.graphCore?.subscribeView(() => this.#scheduleRender()) ?? null;
+    this.stateUnsubscribe =
+      this.graphCore?.subscribe(() => this.#scheduleRender()) ?? null;
     this.renderFrame();
   }
 
@@ -86,10 +90,16 @@ export default class PixiProjection {
     this.stateUnsubscribe?.();
     this.resizeObserver?.disconnect?.();
     this.app.stage.removeAllListeners();
-    this.nodeLayer.removeChildren().forEach?.((child) => child.destroy?.({ children: true }));
+    this.nodeLayer
+      .removeChildren()
+      .forEach?.((child) => child.destroy?.({ children: true }));
     this.edgeLayer.destroy(true);
     this.gridLayer.destroy(true);
-    this.app.destroy(true, { children: true, texture: true, baseTexture: true });
+    this.app.destroy(true, {
+      children: true,
+      texture: true,
+      baseTexture: true,
+    });
     this.nodeEntries.clear();
   }
 
@@ -144,7 +154,11 @@ export default class PixiProjection {
   #drawGrid() {
     const { width, height } = this.app.renderer.screen;
     this.gridLayer.clear();
-    this.gridLayer.lineStyle(1, this.theme.pixi.gridColor, this.theme.pixi.gridAlpha);
+    this.gridLayer.lineStyle(
+      1,
+      this.theme.pixi.gridColor,
+      this.theme.pixi.gridAlpha,
+    );
     const spacing = 48;
     for (let x = 0; x <= width; x += spacing) {
       this.gridLayer.moveTo(x, 0);
@@ -163,7 +177,11 @@ export default class PixiProjection {
     });
 
     this.edgeLayer.clear();
-    this.edgeLayer.lineStyle(2, this.theme.pixi.edgeColor, this.theme.pixi.edgeAlpha);
+    this.edgeLayer.lineStyle(
+      2,
+      this.theme.pixi.edgeColor,
+      this.theme.pixi.edgeAlpha,
+    );
     view.edges.forEach((edge) => {
       const from = map.get(edge.sourceKey);
       const to = map.get(edge.targetKey);
@@ -223,9 +241,14 @@ export default class PixiProjection {
     container.addChild(background);
     container.addChild(label);
 
-    container.on("pointerdown", (event) => this.#handlePointerDown(node.nodeKey, container, event));
+    container.on("pointerdown", (event) =>
+      this.#handlePointerDown(node.nodeKey, container, event),
+    );
     container.on("pointertap", () => {
-      this.graphCore.sendIntent?.({ type: "select-node", nodeKey: node.nodeKey });
+      this.graphCore.sendIntent?.({
+        type: "select-node",
+        nodeKey: node.nodeKey,
+      });
     });
 
     return { container, background, label };
@@ -248,10 +271,16 @@ export default class PixiProjection {
     entry.label.text = node.label || node.nodeKey || "Node";
 
     entry.background.clear();
-    entry.background.lineStyle( isSelected ? 3 : 1.5, color, this.theme.pixi.nodeBorderAlpha);
+    entry.background.lineStyle(
+      isSelected ? 3 : 1.5,
+      color,
+      this.theme.pixi.nodeBorderAlpha,
+    );
     entry.background.beginFill(
       color,
-      isSelected ? this.theme.pixi.nodeActiveFillAlpha : this.theme.pixi.nodeFillAlpha,
+      isSelected
+        ? this.theme.pixi.nodeActiveFillAlpha
+        : this.theme.pixi.nodeFillAlpha,
     );
     entry.background.drawRoundedRect(0, 0, NODE_WIDTH, NODE_HEIGHT, 14);
     entry.background.endFill();
@@ -281,6 +310,8 @@ export default class PixiProjection {
 
   #getNodeColor(type) {
     const palette = this.theme.pixi.nodePalette;
-    return palette[type] ?? palette.default ?? DEFAULT_THEME.pixi.nodePalette.default;
+    return (
+      palette[type] ?? palette.default ?? DEFAULT_THEME.pixi.nodePalette.default
+    );
   }
 }

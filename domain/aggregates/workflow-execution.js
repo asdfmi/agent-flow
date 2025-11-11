@@ -1,18 +1,26 @@
-import NodeExecution, { NODE_EXECUTION_STATUS } from '../entities/node-execution.js';
-import ExecutionResult from '../value-objects/execution-result.js';
-import Metric from '../value-objects/metric.js';
-import { requireNonEmptyString } from '../utils/validation.js';
-import { InvalidTransitionError, InvariantViolationError, ValidationError } from '../errors.js';
+import NodeExecution, {
+  NODE_EXECUTION_STATUS,
+} from "../entities/node-execution.js";
+import ExecutionResult from "../value-objects/execution-result.js";
+import Metric from "../value-objects/metric.js";
+import { requireNonEmptyString } from "../utils/validation.js";
+import {
+  InvalidTransitionError,
+  InvariantViolationError,
+  ValidationError,
+} from "../errors.js";
 
 export const WORKFLOW_EXECUTION_STATUS = Object.freeze({
-  NOT_STARTED: 'NotStarted',
-  RUNNING: 'Running',
-  SUCCEEDED: 'Succeeded',
-  FAILED: 'Failed',
-  CANCELLED: 'Cancelled',
+  NOT_STARTED: "NotStarted",
+  RUNNING: "Running",
+  SUCCEEDED: "Succeeded",
+  FAILED: "Failed",
+  CANCELLED: "Cancelled",
 });
 
-const VALID_WORKFLOW_STATUSES = new Set(Object.values(WORKFLOW_EXECUTION_STATUS));
+const VALID_WORKFLOW_STATUSES = new Set(
+  Object.values(WORKFLOW_EXECUTION_STATUS),
+);
 
 export default class WorkflowExecution {
   constructor({
@@ -26,22 +34,33 @@ export default class WorkflowExecution {
     completedAt = null,
     expectedNodeIds = [],
   }) {
-    this.id = requireNonEmptyString(id, 'WorkflowExecution.id');
-    this.workflowId = requireNonEmptyString(workflowId, 'WorkflowExecution.workflowId');
+    this.id = requireNonEmptyString(id, "WorkflowExecution.id");
+    this.workflowId = requireNonEmptyString(
+      workflowId,
+      "WorkflowExecution.workflowId",
+    );
     this.status = WorkflowExecution.#ensureStatus(status);
     this.startedAt = startedAt ? new Date(startedAt) : null;
     this.completedAt = completedAt ? new Date(completedAt) : null;
     this.result = result ? ExecutionResult.from(result) : null;
-    this.expectedNodeIds = WorkflowExecution.#normalizeExpectedNodeIds(expectedNodeIds);
+    this.expectedNodeIds =
+      WorkflowExecution.#normalizeExpectedNodeIds(expectedNodeIds);
 
-    const executions = WorkflowExecution.#ensureArray(nodeExecutions, 'WorkflowExecution.nodeExecutions')
-      .map((execution) => NodeExecution.from(execution));
-    this.nodeExecutions = new Map(executions.map((execution) => [execution.nodeId, execution]));
+    const executions = WorkflowExecution.#ensureArray(
+      nodeExecutions,
+      "WorkflowExecution.nodeExecutions",
+    ).map((execution) => NodeExecution.from(execution));
+    this.nodeExecutions = new Map(
+      executions.map((execution) => [execution.nodeId, execution]),
+    );
     this.#ensureExpectedCoverage();
 
     this.metricDefinitions = new Map();
     this.metrics = [];
-    WorkflowExecution.#ensureArray(metrics, 'WorkflowExecution.metrics').forEach((metric) => this.addMetric(metric));
+    WorkflowExecution.#ensureArray(
+      metrics,
+      "WorkflowExecution.metrics",
+    ).forEach((metric) => this.addMetric(metric));
   }
 
   static #ensureStatus(status) {
@@ -63,10 +82,16 @@ export default class WorkflowExecution {
 
   static #normalizeExpectedNodeIds(nodeIds) {
     if (!nodeIds || nodeIds === undefined) return new Set();
-    const array = WorkflowExecution.#ensureArray(nodeIds, 'WorkflowExecution.expectedNodeIds');
+    const array = WorkflowExecution.#ensureArray(
+      nodeIds,
+      "WorkflowExecution.expectedNodeIds",
+    );
     const normalized = new Set();
     for (const nodeId of array) {
-      const normalizedId = requireNonEmptyString(nodeId, 'WorkflowExecution.expectedNodeId');
+      const normalizedId = requireNonEmptyString(
+        nodeId,
+        "WorkflowExecution.expectedNodeId",
+      );
       normalized.add(normalizedId);
     }
     return normalized;
@@ -85,7 +110,9 @@ export default class WorkflowExecution {
 
   start(timestamp = new Date()) {
     if (this.status !== WORKFLOW_EXECUTION_STATUS.NOT_STARTED) {
-      throw new InvalidTransitionError('WorkflowExecution can only start from NotStarted');
+      throw new InvalidTransitionError(
+        "WorkflowExecution can only start from NotStarted",
+      );
     }
     this.status = WORKFLOW_EXECUTION_STATUS.RUNNING;
     this.startedAt = new Date(timestamp);
@@ -120,7 +147,10 @@ export default class WorkflowExecution {
     if (this.status === WORKFLOW_EXECUTION_STATUS.RUNNING) {
       this.status = WORKFLOW_EXECUTION_STATUS.CANCELLED;
       this.completedAt = new Date(timestamp);
-      this.result = new ExecutionResult({ success: false, finishedAt: this.completedAt });
+      this.result = new ExecutionResult({
+        success: false,
+        finishedAt: this.completedAt,
+      });
     }
     return nodeExecution;
   }
@@ -135,7 +165,10 @@ export default class WorkflowExecution {
     }
     this.status = WORKFLOW_EXECUTION_STATUS.CANCELLED;
     this.completedAt = new Date(timestamp);
-    this.result = new ExecutionResult({ success: false, finishedAt: this.completedAt });
+    this.result = new ExecutionResult({
+      success: false,
+      finishedAt: this.completedAt,
+    });
   }
 
   addMetric(metricInput) {
@@ -144,7 +177,9 @@ export default class WorkflowExecution {
     if (this.metricDefinitions.has(key)) {
       const definition = this.metricDefinitions.get(key);
       if (definition.type !== metric.type || definition.unit !== metric.unit) {
-        throw new InvariantViolationError(`Metric ${metric.key} changed type/unit`);
+        throw new InvariantViolationError(
+          `Metric ${metric.key} changed type/unit`,
+        );
       }
     } else {
       this.metricDefinitions.set(key, { type: metric.type, unit: metric.unit });
@@ -177,14 +212,15 @@ export default class WorkflowExecution {
 
   #assertRunning() {
     if (this.status !== WORKFLOW_EXECUTION_STATUS.RUNNING) {
-      throw new InvalidTransitionError('WorkflowExecution is not running');
+      throw new InvalidTransitionError("WorkflowExecution is not running");
     }
   }
 
   #autoComplete(timestamp) {
-    const nodeIds = this.expectedNodeIds.size > 0
-      ? [...this.expectedNodeIds]
-      : [...this.nodeExecutions.keys()];
+    const nodeIds =
+      this.expectedNodeIds.size > 0
+        ? [...this.expectedNodeIds]
+        : [...this.nodeExecutions.keys()];
     if (nodeIds.length === 0) {
       return;
     }
@@ -195,7 +231,10 @@ export default class WorkflowExecution {
     if (allDone) {
       this.status = WORKFLOW_EXECUTION_STATUS.SUCCEEDED;
       this.completedAt = new Date(timestamp);
-      this.result = new ExecutionResult({ success: true, finishedAt: this.completedAt });
+      this.result = new ExecutionResult({
+        success: true,
+        finishedAt: this.completedAt,
+      });
     }
   }
 
@@ -204,7 +243,7 @@ export default class WorkflowExecution {
     this.completedAt = new Date(timestamp);
     this.result = new ExecutionResult({
       success: false,
-      error: error ?? 'workflow_failed',
+      error: error ?? "workflow_failed",
       finishedAt: this.completedAt,
     });
   }
@@ -212,7 +251,9 @@ export default class WorkflowExecution {
   #assertKnownNode(nodeId) {
     if (this.expectedNodeIds.size === 0) return;
     if (!this.expectedNodeIds.has(nodeId)) {
-      throw new ValidationError(`Node "${nodeId}" is not part of workflow execution ${this.id}`);
+      throw new ValidationError(
+        `Node "${nodeId}" is not part of workflow execution ${this.id}`,
+      );
     }
   }
 }

@@ -1,25 +1,25 @@
-import { InvariantViolationError, ValidationError } from '../errors.js';
+import { InvariantViolationError, ValidationError } from "../errors.js";
 
 const DEFAULT_LOGGER = globalThis.console ?? {};
 
 function requireRunId(value) {
-  if (typeof value !== 'string' || !value.trim()) {
-    throw new ValidationError('runId is required');
+  if (typeof value !== "string" || !value.trim()) {
+    throw new ValidationError("runId is required");
   }
   return value.trim();
 }
 
 function requireWorkflow(workflow) {
-  if (!workflow || typeof workflow !== 'object') {
-    throw new ValidationError('workflow is required');
+  if (!workflow || typeof workflow !== "object") {
+    throw new ValidationError("workflow is required");
   }
   return workflow;
 }
 
 export default class RunManager {
   constructor({ maxConcurrency, runWorkflow, logger = DEFAULT_LOGGER } = {}) {
-    if (typeof runWorkflow !== 'function') {
-      throw new ValidationError('runWorkflow is required');
+    if (typeof runWorkflow !== "function") {
+      throw new ValidationError("runWorkflow is required");
     }
     this.maxConcurrency = RunManager.#normalizeConcurrency(maxConcurrency);
     this.runWorkflow = runWorkflow;
@@ -30,7 +30,7 @@ export default class RunManager {
   static #normalizeConcurrency(value) {
     const candidate = Number(value ?? 1);
     if (!Number.isFinite(candidate) || candidate <= 0) {
-      throw new ValidationError('maxConcurrency must be a positive number');
+      throw new ValidationError("maxConcurrency must be a positive number");
     }
     return candidate;
   }
@@ -43,7 +43,7 @@ export default class RunManager {
     requireRunId(runId);
     requireWorkflow(workflow);
     if (this.activeRuns >= this.maxConcurrency) {
-      throw new InvariantViolationError('runner busy', {
+      throw new InvariantViolationError("runner busy", {
         activeRuns: this.activeRuns,
         maxConcurrency: this.maxConcurrency,
       });
@@ -59,7 +59,7 @@ export default class RunManager {
 
     Promise.resolve(runPromise)
       .catch((error) => {
-        this.logger.error?.('Workflow execution failed', error);
+        this.logger.error?.("Workflow execution failed", error);
       })
       .finally(() => {
         this.activeRuns -= 1;

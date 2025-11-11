@@ -62,8 +62,10 @@ export default function NodeDetailPanel({
     .filter(Boolean);
 
   const sortedEdges = (edges || []).slice().sort((a, b) => {
-    const ap = typeof a.priority === "number" ? a.priority : Number.MAX_SAFE_INTEGER;
-    const bp = typeof b.priority === "number" ? b.priority : Number.MAX_SAFE_INTEGER;
+    const ap =
+      typeof a.priority === "number" ? a.priority : Number.MAX_SAFE_INTEGER;
+    const bp =
+      typeof b.priority === "number" ? b.priority : Number.MAX_SAFE_INTEGER;
     if (ap !== bp) return ap - bp;
     return 0;
   });
@@ -121,19 +123,26 @@ export default function NodeDetailPanel({
         edgeKey: key,
         targetKey: trimmedDefault,
         condition: null,
-        metadata: defaultEdge?.metadata && typeof defaultEdge.metadata === "object" ? defaultEdge.metadata : null,
+        metadata:
+          defaultEdge?.metadata && typeof defaultEdge.metadata === "object"
+            ? defaultEdge.metadata
+            : null,
         priority: 0,
       },
     ]);
   };
 
-  const emitIfEdgesFromList = (branches = ifBranches, elseTargetKey = ifElseTarget) => {
+  const emitIfEdgesFromList = (
+    branches = ifBranches,
+    elseTargetKey = ifElseTarget,
+  ) => {
     const usedKeys = new Set(edgeKeys);
     const payload = [];
     (branches || []).forEach((entry, index) => {
       const normalizedTarget = String(entry.targetKey || "").trim();
       if (!normalizedTarget) return;
-      const normalizedCondition = entry.condition ?? createDefaultBranchCondition("visible");
+      const normalizedCondition =
+        entry.condition ?? createDefaultBranchCondition("visible");
       payload.push({
         edgeKey: ensureKey(usedKeys, entry.edgeKey),
         targetKey: normalizedTarget,
@@ -148,9 +157,10 @@ export default function NodeDetailPanel({
         edgeKey: ensureKey(usedKeys, defaultEdge?.edgeKey),
         targetKey: normalizedElse,
         condition: null,
-        metadata: defaultEdge?.metadata && typeof defaultEdge.metadata === "object"
-          ? defaultEdge.metadata
-          : null,
+        metadata:
+          defaultEdge?.metadata && typeof defaultEdge.metadata === "object"
+            ? defaultEdge.metadata
+            : null,
         priority: payload.length,
       });
     }
@@ -260,7 +270,8 @@ export default function NodeDetailPanel({
             <Stack spacing={1}>
               <Typography variant="subtitle2">Branches</Typography>
               <Typography variant="body2" color="text.secondary">
-                Branches are evaluated from top to bottom. The first matching condition runs its target node.
+                Branches are evaluated from top to bottom. The first matching
+                condition runs its target node.
               </Typography>
             </Stack>
             <Stack spacing={1.5}>
@@ -271,20 +282,34 @@ export default function NodeDetailPanel({
               ) : (
                 ifBranches.map((branch, index) => (
                   <Stack key={branch.edgeKey || index} spacing={1.25}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center">
-                      <Typography variant="subtitle2">Branch {index + 1}</Typography>
-                      <Button color="error" size="small" onClick={() => handleRemoveIfBranch(index)}>
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
+                      <Typography variant="subtitle2">
+                        Branch {index + 1}
+                      </Typography>
+                      <Button
+                        color="error"
+                        size="small"
+                        onClick={() => handleRemoveIfBranch(index)}
+                      >
                         Remove
                       </Button>
                     </Stack>
                     <ConditionEditor
                       value={branch.condition}
-                      onChange={(condition) => handleIfBranchConditionChange(index, condition)}
+                      onChange={(condition) =>
+                        handleIfBranchConditionChange(index, condition)
+                      }
                     />
                     <TextField
                       label="Target node"
                       value={branch.targetKey ?? ""}
-                      onChange={(event) => handleIfBranchTargetChange(index, event.target.value)}
+                      onChange={(event) =>
+                        handleIfBranchTargetChange(index, event.target.value)
+                      }
                       fullWidth
                     />
                   </Stack>
@@ -308,7 +333,9 @@ export default function NodeDetailPanel({
             <TextField
               label="Target node key"
               value={defaultTarget}
-              onChange={(event) => handleDefaultTargetChange(event.target.value)}
+              onChange={(event) =>
+                handleDefaultTargetChange(event.target.value)
+              }
               helperText="Leave empty to end the workflow after this node."
               fullWidth
             />
@@ -325,7 +352,12 @@ export default function NodeDetailPanel({
         </Stack>
       </Stack>
 
-      <Stack direction="row" justifyContent="flex-end" spacing={1} alignItems="center">
+      <Stack
+        direction="row"
+        justifyContent="flex-end"
+        spacing={1}
+        alignItems="center"
+      >
         <Button
           variant="contained"
           color="error"

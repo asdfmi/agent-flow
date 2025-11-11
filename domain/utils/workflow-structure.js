@@ -1,11 +1,12 @@
-import { randomUUID } from 'node:crypto';
-import Workflow from '../aggregates/workflow.js';
-import Edge from '../value-objects/edge.js';
-import DataBinding from '../value-objects/data-binding.js';
-import { ValidationError } from '../errors.js';
-import NodeFactory from '../factories/node-factory.js';
+import { randomUUID } from "node:crypto";
+import Workflow from "../aggregates/workflow.js";
+import Edge from "../value-objects/edge.js";
+import DataBinding from "../value-objects/data-binding.js";
+import { ValidationError } from "../errors.js";
+import NodeFactory from "../factories/node-factory.js";
 
-const toArray = (value) => (Array.isArray(value) ? value : (value ? [value] : []));
+const toArray = (value) =>
+  Array.isArray(value) ? value : value ? [value] : [];
 
 const toFiniteNumber = (value) => {
   if (value === null || value === undefined) return null;
@@ -15,22 +16,26 @@ const toFiniteNumber = (value) => {
 
 function normalizePorts(ports, fallbackRequired) {
   return toArray(ports).map((port, index) => {
-    if (typeof port === 'string') {
+    if (typeof port === "string") {
       return { name: port, required: fallbackRequired };
     }
-    if (port && typeof port === 'object') {
-      const name = typeof port.name === 'string' && port.name.trim()
-        ? port.name.trim()
-        : null;
+    if (port && typeof port === "object") {
+      const name =
+        typeof port.name === "string" && port.name.trim()
+          ? port.name.trim()
+          : null;
       if (!name) {
         throw new ValidationError(`Port #${index + 1} is missing name`);
       }
       return {
         name,
-        required: port.required === undefined ? fallbackRequired : Boolean(port.required),
+        required:
+          port.required === undefined
+            ? fallbackRequired
+            : Boolean(port.required),
       };
     }
-    throw new ValidationError('Port definition must be a string or object');
+    throw new ValidationError("Port definition must be a string or object");
   });
 }
 
@@ -39,33 +44,40 @@ function pickNodeRef(edgeInput, index, key, map) {
     edgeInput?.[key],
     edgeInput?.[`${key}Id`],
     edgeInput?.[`${key}NodeId`],
-    key === 'from' ? edgeInput?.source : edgeInput?.target,
-    key === 'from' ? edgeInput?.sourceKey : edgeInput?.targetKey,
+    key === "from" ? edgeInput?.source : edgeInput?.target,
+    key === "from" ? edgeInput?.sourceKey : edgeInput?.targetKey,
   ];
-  const raw = candidates.find((value) => typeof value === 'string' && value.trim());
-  if (!raw || typeof raw !== 'string' || !raw.trim()) {
+  const raw = candidates.find(
+    (value) => typeof value === "string" && value.trim(),
+  );
+  if (!raw || typeof raw !== "string" || !raw.trim()) {
     throw new ValidationError(`Edge[${index + 1}] is missing ${key} reference`);
   }
   const normalized = raw.trim();
   const resolved = map.get(normalized);
   if (!resolved) {
-    throw new ValidationError(`Edge[${index + 1}] references unknown node "${normalized}"`);
+    throw new ValidationError(
+      `Edge[${index + 1}] references unknown node "${normalized}"`,
+    );
   }
   return resolved;
 }
 
 function resolveBindingNode(binding, key, map, index) {
-  const raw = binding?.[key]
-    ?? binding?.[`${key}NodeId`]
-    ?? binding?.[key === 'sourceNodeId' ? 'from' : 'to']
-    ?? binding?.[key === 'sourceNodeId' ? 'source' : 'target'];
-  if (!raw || typeof raw !== 'string' || !raw.trim()) {
+  const raw =
+    binding?.[key] ??
+    binding?.[`${key}NodeId`] ??
+    binding?.[key === "sourceNodeId" ? "from" : "to"] ??
+    binding?.[key === "sourceNodeId" ? "source" : "target"];
+  if (!raw || typeof raw !== "string" || !raw.trim()) {
     throw new ValidationError(`DataBinding[${index + 1}] is missing ${key}`);
   }
   const normalized = raw.trim();
   const resolved = map.get(normalized);
   if (!resolved) {
-    throw new ValidationError(`DataBinding[${index + 1}] references unknown node "${normalized}"`);
+    throw new ValidationError(
+      `DataBinding[${index + 1}] references unknown node "${normalized}"`,
+    );
   }
   return resolved;
 }
@@ -77,24 +89,26 @@ export function normalizeWorkflowStructure({
   edges = [],
   dataBindings = [],
 }) {
-  if (!workflowId || typeof workflowId !== 'string') {
-    throw new ValidationError('workflowId is required');
+  if (!workflowId || typeof workflowId !== "string") {
+    throw new ValidationError("workflowId is required");
   }
-  if (!name || typeof name !== 'string') {
-    throw new ValidationError('Workflow name is required');
+  if (!name || typeof name !== "string") {
+    throw new ValidationError("Workflow name is required");
   }
 
   const nodeKeyMap = new Map();
   const normalizedNodes = nodes.map((nodeInput, index) => {
-    if (!nodeInput || typeof nodeInput !== 'object') {
+    if (!nodeInput || typeof nodeInput !== "object") {
       throw new ValidationError(`Node[${index + 1}] must be an object`);
     }
-    const providedId = typeof nodeInput.id === 'string' && nodeInput.id.trim()
-      ? nodeInput.id.trim()
-      : null;
-    const providedKey = typeof nodeInput.nodeKey === 'string' && nodeInput.nodeKey.trim()
-      ? nodeInput.nodeKey.trim()
-      : null;
+    const providedId =
+      typeof nodeInput.id === "string" && nodeInput.id.trim()
+        ? nodeInput.id.trim()
+        : null;
+    const providedKey =
+      typeof nodeInput.nodeKey === "string" && nodeInput.nodeKey.trim()
+        ? nodeInput.nodeKey.trim()
+        : null;
     const id = providedId ?? providedKey ?? randomUUID();
     nodeKeyMap.set(id, id);
     if (providedId && providedId !== id) {
@@ -103,22 +117,23 @@ export function normalizeWorkflowStructure({
     if (providedKey && providedKey !== id) {
       nodeKeyMap.set(providedKey, id);
     }
-    const labelled = typeof nodeInput.name === 'string' && nodeInput.name.trim()
-      ? nodeInput.name.trim()
-      : id;
+    const labelled =
+      typeof nodeInput.name === "string" && nodeInput.name.trim()
+        ? nodeInput.name.trim()
+        : id;
     const positionX = toFiniteNumber(
-      nodeInput.positionX
-        ?? nodeInput.position?.x
-        ?? nodeInput.position?.left
-        ?? nodeInput.x
-        ?? nodeInput.left,
+      nodeInput.positionX ??
+        nodeInput.position?.x ??
+        nodeInput.position?.left ??
+        nodeInput.x ??
+        nodeInput.left,
     );
     const positionY = toFiniteNumber(
-      nodeInput.positionY
-        ?? nodeInput.position?.y
-        ?? nodeInput.position?.top
-        ?? nodeInput.y
-        ?? nodeInput.top,
+      nodeInput.positionY ??
+        nodeInput.position?.y ??
+        nodeInput.position?.top ??
+        nodeInput.y ??
+        nodeInput.top,
     );
     return {
       id,
@@ -126,9 +141,9 @@ export function normalizeWorkflowStructure({
       workflowId,
       name: labelled,
       type:
-        (typeof nodeInput.type === 'string' && nodeInput.type.trim())
+        typeof nodeInput.type === "string" && nodeInput.type.trim()
           ? nodeInput.type.trim()
-          : 'task',
+          : "task",
       inputs: normalizePorts(nodeInput.inputs ?? [], true),
       outputs: normalizePorts(nodeInput.outputs ?? [], false),
       config: nodeInput.config ?? null,
@@ -138,23 +153,28 @@ export function normalizeWorkflowStructure({
   });
 
   const normalizedEdges = edges.map((edgeInput, index) => {
-    if (!edgeInput || typeof edgeInput !== 'object') {
+    if (!edgeInput || typeof edgeInput !== "object") {
       throw new ValidationError(`Edge[${index + 1}] must be an object`);
     }
-    const providedKey = typeof edgeInput.edgeKey === 'string' && edgeInput.edgeKey.trim()
-      ? edgeInput.edgeKey.trim()
-      : null;
-    const fromNodeId = pickNodeRef(edgeInput, index, 'from', nodeKeyMap);
-    const toCandidate = edgeInput?.to
-      ?? edgeInput?.target
-      ?? edgeInput?.toNodeId
-      ?? edgeInput?.targetNodeId
-      ?? edgeInput?.targetKey
-      ?? null;
+    const providedKey =
+      typeof edgeInput.edgeKey === "string" && edgeInput.edgeKey.trim()
+        ? edgeInput.edgeKey.trim()
+        : null;
+    const fromNodeId = pickNodeRef(edgeInput, index, "from", nodeKeyMap);
+    const toCandidate =
+      edgeInput?.to ??
+      edgeInput?.target ??
+      edgeInput?.toNodeId ??
+      edgeInput?.targetNodeId ??
+      edgeInput?.targetKey ??
+      null;
     const toNodeId = toCandidate
-      ? pickNodeRef({ ...edgeInput, to: toCandidate }, index, 'to', nodeKeyMap)
+      ? pickNodeRef({ ...edgeInput, to: toCandidate }, index, "to", nodeKeyMap)
       : null;
-    const edgeId = (typeof edgeInput.id === 'string' && edgeInput.id.trim()) ? edgeInput.id.trim() : randomUUID();
+    const edgeId =
+      typeof edgeInput.id === "string" && edgeInput.id.trim()
+        ? edgeInput.id.trim()
+        : randomUUID();
     return {
       id: edgeId,
       edgeKey: providedKey ?? edgeId,
@@ -162,27 +182,47 @@ export function normalizeWorkflowStructure({
       fromNodeId,
       toNodeId,
       condition: edgeInput.condition ?? null,
-      priority: typeof edgeInput.priority === 'number' ? edgeInput.priority : null,
-      label: typeof edgeInput.label === 'string' ? edgeInput.label : null,
-      metadata: edgeInput.metadata && typeof edgeInput.metadata === 'object' ? edgeInput.metadata : null,
+      priority:
+        typeof edgeInput.priority === "number" ? edgeInput.priority : null,
+      label: typeof edgeInput.label === "string" ? edgeInput.label : null,
+      metadata:
+        edgeInput.metadata && typeof edgeInput.metadata === "object"
+          ? edgeInput.metadata
+          : null,
     };
   });
 
   const normalizedBindings = dataBindings.map((bindingInput, index) => {
-    if (!bindingInput || typeof bindingInput !== 'object') {
+    if (!bindingInput || typeof bindingInput !== "object") {
       throw new ValidationError(`DataBinding[${index + 1}] must be an object`);
     }
-    const sourceNodeId = resolveBindingNode(bindingInput, 'sourceNodeId', nodeKeyMap, index);
-    const targetNodeId = resolveBindingNode(bindingInput, 'targetNodeId', nodeKeyMap, index);
+    const sourceNodeId = resolveBindingNode(
+      bindingInput,
+      "sourceNodeId",
+      nodeKeyMap,
+      index,
+    );
+    const targetNodeId = resolveBindingNode(
+      bindingInput,
+      "targetNodeId",
+      nodeKeyMap,
+      index,
+    );
     const targetInput =
-      (typeof bindingInput.targetInput === 'string' && bindingInput.targetInput.trim())
+      typeof bindingInput.targetInput === "string" &&
+      bindingInput.targetInput.trim()
         ? bindingInput.targetInput.trim()
         : null;
     if (!targetInput) {
-      throw new ValidationError(`DataBinding[${index + 1}] requires targetInput`);
+      throw new ValidationError(
+        `DataBinding[${index + 1}] requires targetInput`,
+      );
     }
     return {
-      id: (typeof bindingInput.id === 'string' && bindingInput.id.trim()) ? bindingInput.id.trim() : randomUUID(),
+      id:
+        typeof bindingInput.id === "string" && bindingInput.id.trim()
+          ? bindingInput.id.trim()
+          : randomUUID(),
       workflowId,
       sourceNodeId,
       sourceOutput: bindingInput.sourceOutput ?? null,
@@ -206,21 +246,23 @@ export function normalizeWorkflowStructure({
       }),
     ),
     edges: normalizedEdges.map(
-      (edge) => new Edge({
-        from: edge.fromNodeId,
-        to: edge.toNodeId,
-        condition: edge.condition,
-        priority: edge.priority,
-      }),
+      (edge) =>
+        new Edge({
+          from: edge.fromNodeId,
+          to: edge.toNodeId,
+          condition: edge.condition,
+          priority: edge.priority,
+        }),
     ),
     dataBindings: normalizedBindings.map(
-      (binding) => new DataBinding({
-        sourceNodeId: binding.sourceNodeId,
-        sourceOutput: binding.sourceOutput,
-        targetNodeId: binding.targetNodeId,
-        targetInput: binding.targetInput,
-        transform: binding.transform,
-      }),
+      (binding) =>
+        new DataBinding({
+          sourceNodeId: binding.sourceNodeId,
+          sourceOutput: binding.sourceOutput,
+          targetNodeId: binding.targetNodeId,
+          targetInput: binding.targetInput,
+          transform: binding.transform,
+        }),
     ),
   });
 
@@ -237,8 +279,10 @@ export function serializeWorkflow(metadata, structure) {
     id: metadata.id,
     name: metadata.name,
     description: metadata.description ?? null,
-    createdAt: metadata.createdAt?.toISOString?.() ?? metadata.createdAt ?? null,
-    updatedAt: metadata.updatedAt?.toISOString?.() ?? metadata.updatedAt ?? null,
+    createdAt:
+      metadata.createdAt?.toISOString?.() ?? metadata.createdAt ?? null,
+    updatedAt:
+      metadata.updatedAt?.toISOString?.() ?? metadata.updatedAt ?? null,
     nodes: structure.nodes,
     edges: structure.edges,
     dataBindings: structure.dataBindings,

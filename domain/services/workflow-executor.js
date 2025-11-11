@@ -1,7 +1,7 @@
-import WorkflowCursor from './workflow-cursor.js';
-import NodeRunner from './node-runner.js';
-import ExecutionContext from './execution-context.js';
-import { buildExecutionView } from './execution-view.js';
+import WorkflowCursor from "./workflow-cursor.js";
+import NodeRunner from "./node-runner.js";
+import ExecutionContext from "./execution-context.js";
+import { buildExecutionView } from "./execution-view.js";
 
 const DEFAULT_LOGGER = globalThis.console ?? {};
 
@@ -17,11 +17,11 @@ export default class WorkflowExecutor {
     stepHandlers = {},
     eventPublisher = null,
   }) {
-    if (typeof browserSessionFactory !== 'function') {
-      throw new Error('browserSessionFactory is required');
+    if (typeof browserSessionFactory !== "function") {
+      throw new Error("browserSessionFactory is required");
     }
-    if (typeof eventDispatcherFactory !== 'function') {
-      throw new Error('eventDispatcherFactory is required');
+    if (typeof eventDispatcherFactory !== "function") {
+      throw new Error("eventDispatcherFactory is required");
     }
     this.workflow = workflow;
     this.workflowExecution = execution;
@@ -40,8 +40,15 @@ export default class WorkflowExecutor {
   }
 
   async run() {
-    this.browserSession = await this.browserSessionFactory({ logger: this.logger }).init();
-    this.events = this.eventDispatcherFactory({ runId: this.runId, logger: this.logger, publish: this.eventPublisher }) ?? null;
+    this.browserSession = await this.browserSessionFactory({
+      logger: this.logger,
+    }).init();
+    this.events =
+      this.eventDispatcherFactory({
+        runId: this.runId,
+        logger: this.logger,
+        publish: this.eventPublisher,
+      }) ?? null;
     this.events?.attachBrowserSession(this.browserSession);
     this.events?.startScreenshotStream();
     this.cursor = new WorkflowCursor({
@@ -50,15 +57,22 @@ export default class WorkflowExecutor {
       edgeEvaluator: (payload) => this.#evaluateEdge(payload),
     });
 
-    await this.#emitRunStatus('running');
+    await this.#emitRunStatus("running");
     try {
       await this.#runSteps();
-      await this.#emitRunStatus('succeeded');
-      await this.events?.done({ ok: true, execution: this.#executionSnapshot() });
+      await this.#emitRunStatus("succeeded");
+      await this.events?.done({
+        ok: true,
+        execution: this.#executionSnapshot(),
+      });
     } catch (error) {
       const message = String(error?.message || error);
-      await this.#emitRunStatus('failed', { error: message });
-      await this.events?.done({ ok: false, error: message, execution: this.#executionSnapshot() });
+      await this.#emitRunStatus("failed", { error: message });
+      await this.events?.done({
+        ok: false,
+        error: message,
+        execution: this.#executionSnapshot(),
+      });
       throw error;
     } finally {
       this.events?.stopScreenshotStream();
@@ -79,7 +93,7 @@ export default class WorkflowExecutor {
   }
 
   async #executeStep(step, meta) {
-    if (!step || typeof step.type !== 'string') {
+    if (!step || typeof step.type !== "string") {
       throw new Error(`invalid step: ${JSON.stringify(step)}`);
     }
     const index = this.execution.nextStepIndex();
@@ -106,7 +120,9 @@ export default class WorkflowExecutor {
           logger: this.logger,
         },
       });
-      this.workflowExecution.completeNode(step.id, { outputs: runResult.outputs ?? null });
+      this.workflowExecution.completeNode(step.id, {
+        outputs: runResult.outputs ?? null,
+      });
       if (this.events?.stepEnd) {
         await this.events.stepEnd({ index, ok: true, meta: enrichedMeta });
       }
@@ -121,10 +137,15 @@ export default class WorkflowExecutor {
       try {
         this.workflowExecution.failNode(step.id, { error: message });
       } catch (executionError) {
-        this.logger.warn?.('Failed to record node failure', executionError);
+        this.logger.warn?.("Failed to record node failure", executionError);
       }
       if (this.events?.stepEnd) {
-        await this.events.stepEnd({ index, ok: false, error: message, meta: enrichedMeta });
+        await this.events.stepEnd({
+          index,
+          ok: false,
+          error: message,
+          meta: enrichedMeta,
+        });
       }
       throw error;
     }
@@ -147,7 +168,10 @@ export default class WorkflowExecutor {
   }
 
   async #emitRunStatus(status, extra = {}) {
-    await this.events?.runStatus(status, { execution: this.#executionSnapshot(), ...extra });
+    await this.events?.runStatus(status, {
+      execution: this.#executionSnapshot(),
+      ...extra,
+    });
   }
 
   async #evaluateEdge({ edge, context }) {
@@ -156,21 +180,26 @@ export default class WorkflowExecutor {
     }
     try {
       switch (edge.condition.type) {
-        case 'expression':
+        case "expression":
           return this.#evaluateExpressionCondition(edge.condition, context);
         default:
-          this.logger.warn?.(`Unsupported edge condition type: ${edge.condition.type}`);
+          this.logger.warn?.(
+            `Unsupported edge condition type: ${edge.condition.type}`,
+          );
           return false;
       }
     } catch (error) {
-      this.logger.warn?.('Failed to evaluate edge condition', { edgeId: edge.id, error });
+      this.logger.warn?.("Failed to evaluate edge condition", {
+        edgeId: edge.id,
+        error,
+      });
       return false;
     }
   }
 
   #evaluateExpressionCondition(condition, context) {
     const expression = condition.expression;
-    if (typeof expression !== 'string' || !expression.trim()) {
+    if (typeof expression !== "string" || !expression.trim()) {
       return false;
     }
     const evaluator = this.#getCompiledExpression(expression);
@@ -192,10 +221,13 @@ export default class WorkflowExecutor {
     if (this.expressionCache.has(expression)) {
       return this.expressionCache.get(expression);
     }
-    const fn = new Function('state', `
+    const fn = new Function(
+      "state",
+      `
       "use strict";
       return (${expression});
-    `);
+    `,
+    );
     this.expressionCache.set(expression, fn);
     return fn;
   }

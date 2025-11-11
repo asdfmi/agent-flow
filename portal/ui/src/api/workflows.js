@@ -19,7 +19,10 @@ export function getWorkflow(id, options = {}) {
 
 export function runWorkflow(id, options = {}) {
   if (id == null) throw new Error("workflow id is required");
-  return request(`/api/workflows/${encodeURIComponent(id)}/run`, { ...options, method: "POST" });
+  return request(`/api/workflows/${encodeURIComponent(id)}/run`, {
+    ...options,
+    method: "POST",
+  });
 }
 
 export function updateWorkflow(id, payload, options = {}) {

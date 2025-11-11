@@ -3,7 +3,7 @@ import {
   NodeExecution,
   Metric,
   ExecutionResult,
-} from '@agent-flow/domain';
+} from "@agent-flow/domain";
 
 export function toDomainWorkflowExecution(record) {
   if (!record) return null;
@@ -11,21 +11,27 @@ export function toDomainWorkflowExecution(record) {
     id: record.id,
     workflowId: record.workflowId,
     status: record.status,
-    nodeExecutions: (record.nodes ?? []).map((node) => new NodeExecution({
-      nodeId: node.nodeId,
-      status: node.status,
-      outputs: node.outputs,
-      error: node.error,
-      startedAt: node.startedAt,
-      completedAt: node.completedAt,
-    })),
-    metrics: (record.metrics ?? []).map((metric) => new Metric({
-      key: metric.key,
-      type: metric.type,
-      unit: metric.unit,
-      value: metric.value,
-      timestamp: metric.timestamp,
-    })),
+    nodeExecutions: (record.nodes ?? []).map(
+      (node) =>
+        new NodeExecution({
+          nodeId: node.nodeId,
+          status: node.status,
+          outputs: node.outputs,
+          error: node.error,
+          startedAt: node.startedAt,
+          completedAt: node.completedAt,
+        }),
+    ),
+    metrics: (record.metrics ?? []).map(
+      (metric) =>
+        new Metric({
+          key: metric.key,
+          type: metric.type,
+          unit: metric.unit,
+          value: metric.value,
+          timestamp: metric.timestamp,
+        }),
+    ),
     result: record.result ? new ExecutionResult(record.result) : null,
     startedAt: record.startedAt,
     completedAt: record.completedAt,

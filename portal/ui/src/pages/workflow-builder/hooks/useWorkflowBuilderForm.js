@@ -33,8 +33,14 @@ export function useWorkflowBuilderForm(workflow) {
   );
 
   const handleAddNode = useCallback(() => graphCore.addNode(), [graphCore]);
-  const handleRemoveNode = useCallback((index) => graphCore.removeNode(index), [graphCore]);
-  const handleSelectNode = useCallback((index) => graphCore.selectNode(index), [graphCore]);
+  const handleRemoveNode = useCallback(
+    (index) => graphCore.removeNode(index),
+    [graphCore],
+  );
+  const handleSelectNode = useCallback(
+    (index) => graphCore.selectNode(index),
+    [graphCore],
+  );
   const handleNodeChange = useCallback(
     (index, updates) => graphCore.updateNode(index, updates),
     [graphCore],

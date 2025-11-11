@@ -1,10 +1,10 @@
-import NodeFactory from '../factories/node-factory.js';
-import Edge from '../value-objects/edge.js';
-import DataBinding from '../value-objects/data-binding.js';
-import { assertInvariant, requireNonEmptyString } from '../utils/validation.js';
-import { stableStringify } from '../utils/object-utils.js';
-import { hasCycle, computeDegrees } from '../utils/graph.js';
-import { InvariantViolationError } from '../errors.js';
+import NodeFactory from "../factories/node-factory.js";
+import Edge from "../value-objects/edge.js";
+import DataBinding from "../value-objects/data-binding.js";
+import { assertInvariant, requireNonEmptyString } from "../utils/validation.js";
+import { stableStringify } from "../utils/object-utils.js";
+import { hasCycle, computeDegrees } from "../utils/graph.js";
+import { InvariantViolationError } from "../errors.js";
 
 function routeKey(edge) {
   const conditionKey = edge.condition
@@ -13,40 +13,41 @@ function routeKey(edge) {
         expression: edge.condition.expression,
         parameters: edge.condition.parameters,
       })
-    : 'no-condition';
+    : "no-condition";
   return `${edge.from}->${edge.to}:${conditionKey}`;
 }
 
 export default class Workflow {
-  constructor({
-    id,
-    name,
-    nodes = [],
-    edges = [],
-    dataBindings = [],
-  }) {
-    this.id = requireNonEmptyString(id, 'Workflow.id');
-    this.name = requireNonEmptyString(name, 'Workflow.name');
+  constructor({ id, name, nodes = [], edges = [], dataBindings = [] }) {
+    this.id = requireNonEmptyString(id, "Workflow.id");
+    this.name = requireNonEmptyString(name, "Workflow.name");
 
     if (!Array.isArray(nodes)) {
-      throw new InvariantViolationError('Workflow.nodes must be an array');
+      throw new InvariantViolationError("Workflow.nodes must be an array");
     }
     this.nodes = nodes.map((node) => NodeFactory.create(node));
-    assertInvariant(this.nodes.length > 0, 'Workflow must declare at least one node');
+    assertInvariant(
+      this.nodes.length > 0,
+      "Workflow must declare at least one node",
+    );
     this.nodesById = new Map(this.nodes.map((node) => [node.id, node]));
     assertInvariant(
       this.nodesById.size === this.nodes.length,
-      'Workflow node ids must be unique',
+      "Workflow node ids must be unique",
     );
 
     if (!Array.isArray(edges)) {
-      throw new InvariantViolationError('Workflow.edges must be an array');
+      throw new InvariantViolationError("Workflow.edges must be an array");
     }
     this.edges = edges.map((edge) => Edge.from(edge));
     if (!Array.isArray(dataBindings)) {
-      throw new InvariantViolationError('Workflow.dataBindings must be an array');
+      throw new InvariantViolationError(
+        "Workflow.dataBindings must be an array",
+      );
     }
-    this.dataBindings = dataBindings.map((binding) => DataBinding.from(binding));
+    this.dataBindings = dataBindings.map((binding) =>
+      DataBinding.from(binding),
+    );
 
     this.edgesBySource = new Map();
     this.edgesByTarget = new Map();
@@ -104,13 +105,21 @@ export default class Workflow {
   #validateGraph() {
     const nodeIds = [...this.nodesById.keys()];
     if (hasCycle(nodeIds, this.edges)) {
-      throw new InvariantViolationError('Workflow must be a DAG (no cycles allowed)');
+      throw new InvariantViolationError(
+        "Workflow must be a DAG (no cycles allowed)",
+      );
     }
     const { inDegree, outDegree } = computeDegrees(nodeIds, this.edges);
     this.startNodeIds = nodeIds.filter((id) => inDegree.get(id) === 0);
     this.endNodeIds = nodeIds.filter((id) => outDegree.get(id) === 0);
-    assertInvariant(this.startNodeIds.length > 0, 'Workflow must expose at least one start node');
-    assertInvariant(this.endNodeIds.length > 0, 'Workflow must expose at least one end node');
+    assertInvariant(
+      this.startNodeIds.length > 0,
+      "Workflow must expose at least one start node",
+    );
+    assertInvariant(
+      this.endNodeIds.length > 0,
+      "Workflow must expose at least one end node",
+    );
   }
 
   #validateBindings() {
@@ -148,10 +157,12 @@ export default class Workflow {
       const requiredInputs = node.getRequiredInputs();
       if (requiredInputs.length === 0) continue;
       const satisfied = coverage.get(node.id) ?? new Set();
-      const missing = requiredInputs.filter((inputName) => !satisfied.has(inputName));
+      const missing = requiredInputs.filter(
+        (inputName) => !satisfied.has(inputName),
+      );
       if (missing.length > 0) {
         throw new InvariantViolationError(
-          `Node "${node.id}" has unresolved inputs: ${missing.join(', ')}`,
+          `Node "${node.id}" has unresolved inputs: ${missing.join(", ")}`,
         );
       }
     }

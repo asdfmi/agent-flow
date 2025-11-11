@@ -1,9 +1,4 @@
-import {
-  Workflow,
-  Edge,
-  DataBinding,
-  NodeFactory,
-} from '@agent-flow/domain';
+import { Workflow, Edge, DataBinding, NodeFactory } from "@agent-flow/domain";
 
 export function toDomainWorkflow({
   workflowRecord,
@@ -25,18 +20,24 @@ export function toDomainWorkflow({
         config: node.config ?? null,
       }),
     ),
-    edges: edgeRecords.map((edge) => new Edge({
-      from: edge.fromNodeId,
-      to: edge.toNodeId,
-      condition: edge.condition,
-      priority: edge.priority,
-    })),
-    dataBindings: bindingRecords.map((binding) => new DataBinding({
-      sourceNodeId: binding.sourceNodeId,
-      sourceOutput: binding.sourceOutput,
-      targetNodeId: binding.targetNodeId,
-      targetInput: binding.targetInput,
-      transform: binding.transform,
-    })),
+    edges: edgeRecords.map(
+      (edge) =>
+        new Edge({
+          from: edge.fromNodeId,
+          to: edge.toNodeId,
+          condition: edge.condition,
+          priority: edge.priority,
+        }),
+    ),
+    dataBindings: bindingRecords.map(
+      (binding) =>
+        new DataBinding({
+          sourceNodeId: binding.sourceNodeId,
+          sourceOutput: binding.sourceOutput,
+          targetNodeId: binding.targetNodeId,
+          targetInput: binding.targetInput,
+          transform: binding.transform,
+        }),
+    ),
   });
 }

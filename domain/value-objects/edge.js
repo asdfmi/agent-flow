@@ -1,16 +1,11 @@
-import Condition from './condition.js';
-import { requireNonEmptyString } from '../utils/validation.js';
-import { ValidationError } from '../errors.js'; // Domain-level validation (structural rule violations)
+import Condition from "./condition.js";
+import { requireNonEmptyString } from "../utils/validation.js";
+import { ValidationError } from "../errors.js"; // Domain-level validation (structural rule violations)
 
 export default class Edge {
-  constructor({
-    from,
-    to,
-    condition = null,
-    priority = null,
-  }) {
-    this.from = requireNonEmptyString(from, 'Edge.from');
-    this.to = requireNonEmptyString(to, 'Edge.to');
+  constructor({ from, to, condition = null, priority = null }) {
+    this.from = requireNonEmptyString(from, "Edge.from");
+    this.to = requireNonEmptyString(to, "Edge.to");
     this.priority = Edge.#normalizePriority(priority);
     this.condition = Condition.from(condition);
     Object.freeze(this);
@@ -21,10 +16,12 @@ export default class Edge {
       return null;
     }
     if (!Number.isFinite(priority)) {
-      throw new ValidationError('Edge.priority must be a finite number');
+      throw new ValidationError("Edge.priority must be a finite number");
     }
     if (priority < 0) {
-      throw new ValidationError('Edge.priority must be greater than or equal to 0');
+      throw new ValidationError(
+        "Edge.priority must be greater than or equal to 0",
+      );
     }
     return priority;
   }
@@ -35,7 +32,7 @@ export default class Edge {
 
   static from(value) {
     if (!value) {
-      throw new ValidationError('Edge input is required');
+      throw new ValidationError("Edge input is required");
     }
     if (value instanceof Edge) return value;
     return new Edge(value);

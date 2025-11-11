@@ -30,7 +30,8 @@ const COMPONENT_BY_TYPE = {
 
 export default function NodeConfigFields({ type, config, onChange }) {
   const Component = COMPONENT_BY_TYPE[type] || FallbackConfigFields;
-  const resolvedConfig = config && typeof config === "object" ? config : getDefaultConfig(type);
+  const resolvedConfig =
+    config && typeof config === "object" ? config : getDefaultConfig(type);
 
   if (Component === FallbackConfigFields) {
     return <FallbackConfigFields />;

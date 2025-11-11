@@ -1,11 +1,12 @@
-import { requireNonEmptyString } from '../../utils/validation.js';
+import { requireNonEmptyString } from "../../utils/validation.js";
 
 export default class NavigateConfig {
   constructor(rawConfig) {
-    const config = rawConfig && typeof rawConfig === 'object' ? rawConfig : {};
-    const url = typeof config.url === 'string' ? config.url : '';
-    const waitUntil = typeof config.waitUntil === 'string' ? config.waitUntil : '';
-    this.url = requireNonEmptyString(url, 'navigate config.url');
+    const config = rawConfig && typeof rawConfig === "object" ? rawConfig : {};
+    const url = typeof config.url === "string" ? config.url : "";
+    const waitUntil =
+      typeof config.waitUntil === "string" ? config.waitUntil : "";
+    this.url = requireNonEmptyString(url, "navigate config.url");
     this.waitUntil = waitUntil;
     Object.freeze(this);
   }

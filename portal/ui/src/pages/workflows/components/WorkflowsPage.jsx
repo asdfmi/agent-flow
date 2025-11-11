@@ -23,9 +23,10 @@ export default function WorkflowsPage() {
         if (controller.signal.aborted) return;
         let message = "Unknown error";
         if (error instanceof HttpError) {
-          const details = error.data && typeof error.data === "object"
-            ? (error.data.error || error.data.message)
-            : null;
+          const details =
+            error.data && typeof error.data === "object"
+              ? error.data.error || error.data.message
+              : null;
           message = details || error.message;
         } else if (error instanceof Error) {
           message = error.message;
@@ -49,7 +50,9 @@ export default function WorkflowsPage() {
   return (
     <>
       <Typography>Workflows</Typography>
-      <Typography>Select a workflow to view details and run the automation.</Typography>
+      <Typography>
+        Select a workflow to view details and run the automation.
+      </Typography>
       <Button onClick={handleCreate}>Create workflow</Button>
       {state.error ? <Alert severity="error">{state.error}</Alert> : null}
       {state.data.length === 0 ? (
@@ -59,7 +62,9 @@ export default function WorkflowsPage() {
           {state.data.map((workflow) => (
             <li key={workflow.id}>
               <Typography>{workflow.title || workflow.id}</Typography>
-              {workflow.description ? <Typography>{workflow.description}</Typography> : null}
+              {workflow.description ? (
+                <Typography>{workflow.description}</Typography>
+              ) : null}
               <Typography>Updated: {workflow.updatedAt}</Typography>
               <Button
                 onClick={() => {

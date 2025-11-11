@@ -1,4 +1,4 @@
-import { chromium } from 'playwright';
+import { chromium } from "playwright";
 
 export default class PlaywrightSession {
   constructor({ logger = console } = {}) {
@@ -16,16 +16,22 @@ export default class PlaywrightSession {
   }
 
   async evaluateOnPage(code, variables) {
-    return this.page.evaluate(({ snip, variables: vars }) => {
-      const context = { variables: vars };
-      const fn = new Function('context', `
+    return this.page.evaluate(
+      ({ snip, variables: vars }) => {
+        const context = { variables: vars };
+        const fn = new Function(
+          "context",
+          `
         "use strict";
         return (async () => {
           ${snip}
         })();
-      `);
-      return fn(context);
-    }, { snip: code, variables });
+      `,
+        );
+        return fn(context);
+      },
+      { snip: code, variables },
+    );
   }
 
   async screenshot(options) {
@@ -37,14 +43,14 @@ export default class PlaywrightSession {
       try {
         await this.context.close();
       } catch (error) {
-        this.logger.warn('Failed to close browser context', error);
+        this.logger.warn("Failed to close browser context", error);
       }
     }
     if (this.browser) {
       try {
         await this.browser.close();
       } catch (error) {
-        this.logger.warn('Failed to close browser', error);
+        this.logger.warn("Failed to close browser", error);
       }
     }
     this.browser = null;

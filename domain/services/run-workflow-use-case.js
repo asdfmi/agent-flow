@@ -1,13 +1,17 @@
-import WorkflowExecution from '../aggregates/workflow-execution.js';
-import { requireNonEmptyString } from '../utils/validation.js';
-import { loadWorkflowDefinition } from './workflow-loader.js';
+import WorkflowExecution from "../aggregates/workflow-execution.js";
+import { requireNonEmptyString } from "../utils/validation.js";
+import { loadWorkflowDefinition } from "./workflow-loader.js";
 
 const DEFAULT_LOGGER = globalThis.console ?? {};
 
 export default class RunWorkflowUseCase {
-  constructor({ runnerFactory, workflowLoader = loadWorkflowDefinition, logger = DEFAULT_LOGGER } = {}) {
-    if (typeof runnerFactory !== 'function') {
-      throw new Error('runnerFactory is required');
+  constructor({
+    runnerFactory,
+    workflowLoader = loadWorkflowDefinition,
+    logger = DEFAULT_LOGGER,
+  } = {}) {
+    if (typeof runnerFactory !== "function") {
+      throw new Error("runnerFactory is required");
     }
     this.runnerFactory = runnerFactory;
     this.workflowLoader = workflowLoader;
@@ -15,7 +19,7 @@ export default class RunWorkflowUseCase {
   }
 
   async execute({ runId, workflowInput }) {
-    const normalizedRunId = requireNonEmptyString(runId, 'runId');
+    const normalizedRunId = requireNonEmptyString(runId, "runId");
     const { workflow, startNodeId } = this.workflowLoader(workflowInput);
     const execution = new WorkflowExecution({
       id: normalizedRunId,

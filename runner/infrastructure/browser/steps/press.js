@@ -1,9 +1,9 @@
-import { DEFAULT_SUCCESS_TIMEOUT_SEC } from '../utils.js';
+import { DEFAULT_SUCCESS_TIMEOUT_SEC } from "../utils.js";
 
 export default async function handlePress({ automation, step }) {
   const {
-    xpath = '',
-    key = '',
+    xpath = "",
+    key = "",
     delay = null,
     timeout: timeoutSeconds = DEFAULT_SUCCESS_TIMEOUT_SEC,
   } = step.config ?? {};

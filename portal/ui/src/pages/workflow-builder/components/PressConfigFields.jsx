@@ -22,7 +22,9 @@ export default function PressConfigFields({ config, onChange }) {
         label="Delay (ms)"
         type="number"
         value={config.delay ?? ""}
-        onChange={(event) => setConfig({ delay: parseNumber(event.target.value) })}
+        onChange={(event) =>
+          setConfig({ delay: parseNumber(event.target.value) })
+        }
       />
     </>
   );

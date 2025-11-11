@@ -18,7 +18,11 @@ export function useWorkflowRun(workflowId, { enabled = true } = {}) {
     data: null,
     error: "",
   });
-  const [runState, setRunState] = useState({ status: "idle", runId: null, error: "" });
+  const [runState, setRunState] = useState({
+    status: "idle",
+    runId: null,
+    error: "",
+  });
   const [wsStatus, setWsStatus] = useState("idle");
   const [eventLog, setEventLog] = useState([]);
   const [screenshot, setScreenshot] = useState("");
@@ -26,39 +30,50 @@ export function useWorkflowRun(workflowId, { enabled = true } = {}) {
   const wsRef = useRef(null);
   const currentRunIdRef = useRef(null);
 
-  const requestWorkflow = useCallback(async ({ signal } = {}) => {
-    if (!isEnabled) {
-      setWorkflowState({ loading: false, data: null, error: "" });
-      return { ok: false, error: "workflow_disabled" };
-    }
-    if (!normalizedId) {
-      setWorkflowState({ loading: false, data: null, error: "Invalid workflow identifier" });
-      return { ok: false, error: "invalid_workflow_identifier" };
-    }
-    setWorkflowState((prev) => ({ ...prev, loading: true, error: "" }));
-    try {
-      const payload = await getWorkflow(normalizedId, signal ? { signal } : undefined);
-      setWorkflowState({ loading: false, data: payload.data, error: "" });
-      return { ok: true, data: payload.data };
-    } catch (error) {
-      if (signal?.aborted) {
-        return { ok: false, aborted: true };
+  const requestWorkflow = useCallback(
+    async ({ signal } = {}) => {
+      if (!isEnabled) {
+        setWorkflowState({ loading: false, data: null, error: "" });
+        return { ok: false, error: "workflow_disabled" };
       }
-      let message = "Unknown error";
-      if (error instanceof HttpError) {
-        const details = error.data && typeof error.data === "object"
-          ? (error.data.error || error.data.message)
-          : null;
-        message = details || error.message;
-      } else if (error instanceof Error) {
-        message = error.message;
+      if (!normalizedId) {
+        setWorkflowState({
+          loading: false,
+          data: null,
+          error: "Invalid workflow identifier",
+        });
+        return { ok: false, error: "invalid_workflow_identifier" };
       }
-      if (!signal?.aborted) {
-        setWorkflowState({ loading: false, data: null, error: message });
+      setWorkflowState((prev) => ({ ...prev, loading: true, error: "" }));
+      try {
+        const payload = await getWorkflow(
+          normalizedId,
+          signal ? { signal } : undefined,
+        );
+        setWorkflowState({ loading: false, data: payload.data, error: "" });
+        return { ok: true, data: payload.data };
+      } catch (error) {
+        if (signal?.aborted) {
+          return { ok: false, aborted: true };
+        }
+        let message = "Unknown error";
+        if (error instanceof HttpError) {
+          const details =
+            error.data && typeof error.data === "object"
+              ? error.data.error || error.data.message
+              : null;
+          message = details || error.message;
+        } else if (error instanceof Error) {
+          message = error.message;
+        }
+        if (!signal?.aborted) {
+          setWorkflowState({ loading: false, data: null, error: message });
+        }
+        return { ok: false, error: message };
       }
-      return { ok: false, error: message };
-    }
-  }, [normalizedId, isEnabled]);
+    },
+    [normalizedId, isEnabled],
+  );
 
   useEffect(() => {
     if (!isEnabled) {
@@ -71,7 +86,8 @@ export function useWorkflowRun(workflowId, { enabled = true } = {}) {
   }, [requestWorkflow, isEnabled]);
 
   const ensureWs = useCallback(() => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) return wsRef.current;
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN)
+      return wsRef.current;
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
     const ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
     wsRef.current = ws;
@@ -93,7 +109,11 @@ export function useWorkflowRun(workflowId, { enabled = true } = {}) {
         } else if (msg.type === "done") {
           setRunState((prev) => ({ ...prev, status: "done" }));
           setCurrentStepIndex(null);
-        } else if (msg.type === "step_start" || msg.type === "step_end" || msg.type === "log") {
+        } else if (
+          msg.type === "step_start" ||
+          msg.type === "step_end" ||
+          msg.type === "log"
+        ) {
           if (msg.type === "step_start" && typeof msg.index === "number") {
             setCurrentStepIndex(Number(msg.index));
           }
@@ -111,13 +131,16 @@ export function useWorkflowRun(workflowId, { enabled = true } = {}) {
     return ws;
   }, []);
 
-  useEffect(() => () => {
-    try {
-      wsRef.current?.close();
-    } catch (error) {
-      console.warn("Failed to close WebSocket", error);
-    }
-  }, []);
+  useEffect(
+    () => () => {
+      try {
+        wsRef.current?.close();
+      } catch (error) {
+        console.warn("Failed to close WebSocket", error);
+      }
+    },
+    [],
+  );
 
   const handleRun = useCallback(async () => {
     if (!isEnabled || !normalizedId) return { ok: false };
@@ -140,7 +163,11 @@ export function useWorkflowRun(workflowId, { enabled = true } = {}) {
           ws.send(message);
         } catch (error) {
           console.warn("Failed to subscribe to run updates", error);
-          setRunState({ status: "idle", runId: null, error: "WebSocket connection failed" });
+          setRunState({
+            status: "idle",
+            runId: null,
+            error: "WebSocket connection failed",
+          });
         }
       };
       if (ws.readyState === WebSocket.OPEN) {
@@ -156,9 +183,10 @@ export function useWorkflowRun(workflowId, { enabled = true } = {}) {
     } catch (error) {
       let message = "Unknown error";
       if (error instanceof HttpError) {
-        const details = error.data && typeof error.data === "object"
-          ? (error.data.error || error.data.message)
-          : null;
+        const details =
+          error.data && typeof error.data === "object"
+            ? error.data.error || error.data.message
+            : null;
         message = details || error.message;
       } else if (error instanceof Error) {
         message = error.message;

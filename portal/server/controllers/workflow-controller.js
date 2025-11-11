@@ -1,5 +1,5 @@
-import { ValidationError } from '@agent-flow/domain/errors.js';
-import { randomUUID } from 'node:crypto';
+import { ValidationError } from "@agent-flow/domain/errors.js";
+import { randomUUID } from "node:crypto";
 
 export default class WorkflowController {
   constructor({ workflowFactory, workflowExecutionService }) {
@@ -22,14 +22,18 @@ export default class WorkflowController {
   async createWorkflow(req, res) {
     const workflowId = randomUUID();
     const definitionInput = buildDefinitionPayload(workflowId, req.body || {});
-    const created = await this.workflowFactory.createWorkflowDefinition(definitionInput);
+    const created =
+      await this.workflowFactory.createWorkflowDefinition(definitionInput);
     res.status(201).json({ data: formatWorkflowDetail(created) });
   }
 
   async getWorkflow(req, res) {
     const workflowId = sanitizeWorkflowId(req.params.workflowId);
     if (!workflowId) {
-      res.status(400).json({ error: 'invalid_workflow', message: 'workflow id is required' });
+      res.status(400).json({
+        error: "invalid_workflow",
+        message: "workflow id is required",
+      });
       return;
     }
     const workflow = await this.workflowFactory.getWorkflow(workflowId);
@@ -39,64 +43,83 @@ export default class WorkflowController {
   async updateWorkflow(req, res) {
     const workflowId = sanitizeWorkflowId(req.params.workflowId);
     if (!workflowId) {
-      res.status(400).json({ error: 'invalid_workflow', message: 'workflow id is required' });
+      res.status(400).json({
+        error: "invalid_workflow",
+        message: "workflow id is required",
+      });
       return;
     }
     const definitionInput = buildDefinitionPayload(workflowId, req.body || {});
-    const updated = await this.workflowFactory.updateWorkflowDefinition(workflowId, {
-      name: definitionInput.name,
-      description: definitionInput.description,
-      nodes: definitionInput.nodes,
-      edges: definitionInput.edges,
-      dataBindings: definitionInput.dataBindings,
-    });
+    const updated = await this.workflowFactory.updateWorkflowDefinition(
+      workflowId,
+      {
+        name: definitionInput.name,
+        description: definitionInput.description,
+        nodes: definitionInput.nodes,
+        edges: definitionInput.edges,
+        dataBindings: definitionInput.dataBindings,
+      },
+    );
     res.json({ data: formatWorkflowDetail(updated) });
   }
 
   async listRuns(req, res) {
     const workflowId = sanitizeWorkflowId(req.params.workflowId);
     if (!workflowId) {
-      res.status(400).json({ error: 'invalid_workflow', message: 'workflow id is required' });
+      res.status(400).json({
+        error: "invalid_workflow",
+        message: "workflow id is required",
+      });
       return;
     }
     const runs = await this.workflowExecutionService.listExecutions();
-    const filtered = runs.filter((run) => run.workflowId === workflowId).map(formatRunSummary);
+    const filtered = runs
+      .filter((run) => run.workflowId === workflowId)
+      .map(formatRunSummary);
     res.json({ data: filtered });
   }
 
   async runWorkflow(_req, res) {
-    res.status(501).json({ error: 'not_implemented', message: 'Runner integration is not available yet.' });
+    res.status(501).json({
+      error: "not_implemented",
+      message: "Runner integration is not available yet.",
+    });
   }
 }
 
 function sanitizeWorkflowId(value) {
-  const normalized = String(value ?? '').trim();
+  const normalized = String(value ?? "").trim();
   return normalized || null;
 }
 
 function buildDefinitionPayload(workflowId, payload) {
-  const title = String(payload.title ?? payload.name ?? '').trim();
+  const title = String(payload.title ?? payload.name ?? "").trim();
   if (!title) {
-    throw new ValidationError('title is required');
+    throw new ValidationError("title is required");
   }
   const nodes = convertBuilderNodes(payload.nodes);
   if (nodes.length === 0) {
-    throw new ValidationError('At least one node is required');
+    throw new ValidationError("At least one node is required");
   }
   const edges = convertBuilderEdges(payload.edges);
   return {
     id: workflowId,
     name: title,
-    description: typeof payload.description === 'string' ? payload.description : null,
+    description:
+      typeof payload.description === "string" ? payload.description : null,
     nodes,
     edges,
-    dataBindings: Array.isArray(payload.dataBindings) ? payload.dataBindings : [],
+    dataBindings: Array.isArray(payload.dataBindings)
+      ? payload.dataBindings
+      : [],
   };
 }
 
 function convertBuilderNodes(nodesInput = []) {
   return nodesInput.map((node, index) => {
-    const candidate = String(node?.nodeKey || node?.id || `node_${index + 1}`).trim();
+    const candidate = String(
+      node?.nodeKey || node?.id || `node_${index + 1}`,
+    ).trim();
     if (!candidate) {
       throw new ValidationError(`Node ${index + 1}: node key is required`);
     }
@@ -104,8 +127,11 @@ function convertBuilderNodes(nodesInput = []) {
     return {
       id: candidate,
       nodeKey: candidate,
-      name: (typeof node?.label === 'string' && node.label.trim()) ? node.label.trim() : candidate,
-      type: node?.type || 'navigate',
+      name:
+        typeof node?.label === "string" && node.label.trim()
+          ? node.label.trim()
+          : candidate,
+      type: node?.type || "navigate",
       inputs: Array.isArray(node?.inputs) ? node.inputs : [],
       outputs: Array.isArray(node?.outputs) ? node.outputs : [],
       config: node?.config ?? null,
@@ -117,39 +143,49 @@ function convertBuilderNodes(nodesInput = []) {
 
 function convertBuilderEdges(edgesInput = []) {
   return edgesInput.map((edge, index) => {
-    const edgeId = String(edge?.edgeKey || edge?.id || `edge_${index + 1}`).trim();
-    const from = String(edge?.sourceKey || edge?.source || edge?.from || '').trim();
+    const edgeId = String(
+      edge?.edgeKey || edge?.id || `edge_${index + 1}`,
+    ).trim();
+    const from = String(
+      edge?.sourceKey || edge?.source || edge?.from || "",
+    ).trim();
     if (!from) {
       throw new ValidationError(`Edge ${index + 1}: source node is required`);
     }
     const toRaw = edge?.targetKey ?? edge?.target ?? edge?.to ?? null;
-    const to = typeof toRaw === 'string' ? toRaw.trim() : null;
+    const to = typeof toRaw === "string" ? toRaw.trim() : null;
     return {
       id: edgeId,
       from,
       to: to || null,
-      label: typeof edge?.label === 'string' ? edge.label : null,
-      condition: edge?.condition && typeof edge.condition === 'object' ? edge.condition : null,
-      metadata: edge?.metadata && typeof edge.metadata === 'object' ? edge.metadata : null,
-      priority: typeof edge?.priority === 'number' ? edge.priority : index,
+      label: typeof edge?.label === "string" ? edge.label : null,
+      condition:
+        edge?.condition && typeof edge.condition === "object"
+          ? edge.condition
+          : null,
+      metadata:
+        edge?.metadata && typeof edge.metadata === "object"
+          ? edge.metadata
+          : null,
+      priority: typeof edge?.priority === "number" ? edge.priority : index,
     };
   });
 }
 
 function normalizePosition(node) {
   const px = toFiniteNumber(
-    node?.positionX
-      ?? node?.position?.x
-      ?? node?.position?.left
-      ?? node?.x
-      ?? node?.left,
+    node?.positionX ??
+      node?.position?.x ??
+      node?.position?.left ??
+      node?.x ??
+      node?.left,
   );
   const py = toFiniteNumber(
-    node?.positionY
-      ?? node?.position?.y
-      ?? node?.position?.top
-      ?? node?.y
-      ?? node?.top,
+    node?.positionY ??
+      node?.position?.y ??
+      node?.position?.top ??
+      node?.y ??
+      node?.top,
   );
   return { positionX: px, positionY: py };
 }
@@ -164,7 +200,7 @@ function formatWorkflowSummary(row) {
   return {
     id: row.id,
     title: row.name,
-    description: row.description ?? '',
+    description: row.description ?? "",
     createdAt: toISO(row.createdAt),
     updatedAt: toISO(row.updatedAt),
   };
@@ -175,9 +211,9 @@ function formatWorkflowDetail(view) {
   const edges = Array.isArray(view.edges) ? view.edges.map(toBuilderEdge) : [];
   return {
     id: view.id,
-    title: view.name ?? '',
-    description: view.description ?? '',
-    startNodeId: view.startNodeId ?? (nodes[0]?.nodeKey ?? ''),
+    title: view.name ?? "",
+    description: view.description ?? "",
+    startNodeId: view.startNodeId ?? nodes[0]?.nodeKey ?? "",
     nodes,
     edges,
     createdAt: toISO(view.createdAt),
@@ -190,12 +226,13 @@ function toBuilderNode(node, index) {
   const { positionX, positionY } = normalizePosition(node);
   return {
     nodeKey: key,
-    label: (typeof node?.label === 'string' && node.label.trim())
-      ? node.label.trim()
-      : (typeof node?.name === 'string' && node.name.trim())
-        ? node.name.trim()
-        : key,
-    type: node?.type || 'navigate',
+    label:
+      typeof node?.label === "string" && node.label.trim()
+        ? node.label.trim()
+        : typeof node?.name === "string" && node.name.trim()
+          ? node.name.trim()
+          : key,
+    type: node?.type || "navigate",
     config: node?.config ?? {},
     positionX,
     positionY,
@@ -205,18 +242,20 @@ function toBuilderNode(node, index) {
 function toBuilderEdge(edge, index) {
   return {
     edgeKey: String(edge?.edgeKey || edge?.id || `edge_${index + 1}`).trim(),
-    sourceKey: String(edge?.sourceKey || edge?.fromNodeId || edge?.from || edge?.source || '').trim(),
+    sourceKey: String(
+      edge?.sourceKey || edge?.fromNodeId || edge?.from || edge?.source || "",
+    ).trim(),
     targetKey: edge?.targetKey
       ? String(edge.targetKey).trim()
       : edge?.toNodeId
         ? String(edge.toNodeId).trim()
         : edge?.to
           ? String(edge.to).trim()
-          : '',
-    label: edge?.label ?? '',
+          : "",
+    label: edge?.label ?? "",
     condition: edge?.condition ?? null,
     metadata: edge?.metadata ?? null,
-    priority: typeof edge?.priority === 'number' ? edge.priority : null,
+    priority: typeof edge?.priority === "number" ? edge.priority : null,
   };
 }
 
@@ -224,7 +263,7 @@ function formatRunSummary(run) {
   return {
     id: run.id,
     runKey: run.id,
-    status: (run.status || '').toLowerCase(),
+    status: (run.status || "").toLowerCase(),
     startedAt: toISO(run.startedAt),
     finishedAt: toISO(run.completedAt ?? run.updatedAt),
     errorMessage: run.result?.error ?? null,

@@ -36,9 +36,10 @@ export function toEditableNode(node) {
     nodeKey: node.nodeKey ?? "",
     label: node.label ?? "",
     type: node.type ?? "navigate",
-    config: node.config && typeof node.config === "object"
-      ? node.config
-      : getDefaultConfig(node.type ?? "navigate"),
+    config:
+      node.config && typeof node.config === "object"
+        ? node.config
+        : getDefaultConfig(node.type ?? "navigate"),
     positionX,
     positionY,
   };
@@ -51,8 +52,12 @@ export function toEditableEdge(edge) {
     sourceKey: edge.sourceKey ?? edge.source ?? edge.from ?? "",
     targetKey: edge.targetKey ?? edge.target ?? edge.to ?? "",
     label: edge.label ?? "",
-    condition: edge.condition && typeof edge.condition === "object" ? edge.condition : null,
-    metadata: edge.metadata && typeof edge.metadata === "object" ? edge.metadata : null,
+    condition:
+      edge.condition && typeof edge.condition === "object"
+        ? edge.condition
+        : null,
+    metadata:
+      edge.metadata && typeof edge.metadata === "object" ? edge.metadata : null,
     priority: typeof edge.priority === "number" ? edge.priority : null,
   };
 }
@@ -109,7 +114,8 @@ export function createDefaultBranchCondition(type) {
 }
 
 export function getBranchConditionType(condition) {
-  if (!condition || typeof condition !== "object") return BRANCH_CONDITION_TYPES[0].value;
+  if (!condition || typeof condition !== "object")
+    return BRANCH_CONDITION_TYPES[0].value;
   if (condition.visible) return "visible";
   if (condition.exists) return "exists";
   if (typeof condition.urlIncludes === "string") return "urlIncludes";
@@ -119,7 +125,8 @@ export function getBranchConditionType(condition) {
 }
 
 export function parseNumber(input) {
-  if (input === "" || input === null || typeof input === "undefined") return null;
+  if (input === "" || input === null || typeof input === "undefined")
+    return null;
   const num = Number(input);
   return Number.isFinite(num) ? num : null;
 }
@@ -201,7 +208,9 @@ export function buildPayload(form) {
       return;
     }
 
-    const targetKeyRaw = String(edge.targetKey || edge.target || edge.to || "").trim();
+    const targetKeyRaw = String(
+      edge.targetKey || edge.target || edge.to || "",
+    ).trim();
     const targetKey = targetKeyRaw || "";
 
     if (!seen.has(sourceKey)) {
@@ -303,7 +312,8 @@ function hasCycle(nodeKeys, edges) {
   const adjacency = new Map(nodeKeys.map((key) => [key, []]));
   edges.forEach((edge) => {
     if (!edge || !edge.sourceKey || !edge.targetKey) return;
-    if (!adjacency.has(edge.sourceKey) || !adjacency.has(edge.targetKey)) return;
+    if (!adjacency.has(edge.sourceKey) || !adjacency.has(edge.targetKey))
+      return;
     adjacency.get(edge.sourceKey).push(edge.targetKey);
   });
   const visiting = new Set();
@@ -341,22 +351,32 @@ function cleanConfigForType(_type, config) {
 function validateConfig(type, config, label) {
   const errors = [];
   if (type === "navigate") {
-    if (!config || !config.url) errors.push(`${label}: URL is required for navigate nodes`);
+    if (!config || !config.url)
+      errors.push(`${label}: URL is required for navigate nodes`);
   } else if (type === "click") {
-    if (!config || !config.xpath) errors.push(`${label}: XPath is required for click nodes`);
+    if (!config || !config.xpath)
+      errors.push(`${label}: XPath is required for click nodes`);
   } else if (type === "fill") {
-    if (!config || !config.xpath) errors.push(`${label}: XPath is required for fill nodes`);
-    if (!config || (!config.value && config.value !== "")) errors.push(`${label}: Value is required for fill nodes`);
+    if (!config || !config.xpath)
+      errors.push(`${label}: XPath is required for fill nodes`);
+    if (!config || (!config.value && config.value !== ""))
+      errors.push(`${label}: Value is required for fill nodes`);
   } else if (type === "press") {
-    if (!config || !config.xpath) errors.push(`${label}: XPath is required for press nodes`);
-    if (!config || !config.key) errors.push(`${label}: Key is required for press nodes`);
+    if (!config || !config.xpath)
+      errors.push(`${label}: XPath is required for press nodes`);
+    if (!config || !config.key)
+      errors.push(`${label}: Key is required for press nodes`);
   } else if (type === "log") {
-    if (!config || !config.message) errors.push(`${label}: Message is required for log nodes`);
+    if (!config || !config.message)
+      errors.push(`${label}: Message is required for log nodes`);
   } else if (type === "script") {
-    if (!config || !config.code) errors.push(`${label}: Code is required for script nodes`);
+    if (!config || !config.code)
+      errors.push(`${label}: Code is required for script nodes`);
   } else if (type === "extract_text") {
-    if (!config || !config.xpath) errors.push(`${label}: XPath is required for extract_text nodes`);
-    if (!config || !config.as) errors.push(`${label}: Variable name is required for extract_text nodes`);
+    if (!config || !config.xpath)
+      errors.push(`${label}: XPath is required for extract_text nodes`);
+    if (!config || !config.as)
+      errors.push(`${label}: Variable name is required for extract_text nodes`);
   }
   return errors;
 }
@@ -365,7 +385,12 @@ export function deepClean(value) {
   if (Array.isArray(value)) {
     const items = value
       .map(deepClean)
-      .filter((item) => item !== undefined && (!(typeof item === "object") || (item && Object.keys(item).length > 0)));
+      .filter(
+        (item) =>
+          item !== undefined &&
+          (!(typeof item === "object") ||
+            (item && Object.keys(item).length > 0)),
+      );
     return items.length > 0 ? items : undefined;
   }
   if (value && typeof value === "object") {

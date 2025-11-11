@@ -1,8 +1,12 @@
-import WorkflowPlan from './workflow-plan.js';
-import { InvariantViolationError } from '../errors.js';
+import WorkflowPlan from "./workflow-plan.js";
+import { InvariantViolationError } from "../errors.js";
 
 export default class WorkflowCursor {
-  constructor({ workflow, preferredStartNodeId = null, edgeEvaluator = null } = {}) {
+  constructor({
+    workflow,
+    preferredStartNodeId = null,
+    edgeEvaluator = null,
+  } = {}) {
     this.plan = new WorkflowPlan({ workflow, preferredStartNodeId });
     this.currentStepId = this.plan.getStartNodeId();
     this.edgeEvaluator = edgeEvaluator ?? WorkflowCursor.#defaultEdgeEvaluator;
@@ -26,7 +30,9 @@ export default class WorkflowCursor {
     let candidate = this.#normalizeId(requestedNextId);
     if (candidate) {
       if (!this.plan.hasStep(candidate)) {
-        throw new InvariantViolationError(`Node ${candidate} not found in workflow ${this.plan.workflow.id}`);
+        throw new InvariantViolationError(
+          `Node ${candidate} not found in workflow ${this.plan.workflow.id}`,
+        );
       }
       return candidate;
     }
@@ -38,9 +44,9 @@ export default class WorkflowCursor {
   }
 
   #normalizeId(value) {
-    if (typeof value !== 'string') return '';
+    if (typeof value !== "string") return "";
     const trimmed = value.trim();
-    return trimmed || '';
+    return trimmed || "";
   }
 
   async #pickEdgeTarget(stepId, context) {
@@ -58,7 +64,9 @@ export default class WorkflowCursor {
       });
       if (allowed) {
         if (!edge.to) {
-          throw new InvariantViolationError(`Edge ${edge.id} is missing target`);
+          throw new InvariantViolationError(
+            `Edge ${edge.id} is missing target`,
+          );
         }
         return edge.to;
       }

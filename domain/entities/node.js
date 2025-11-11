@@ -1,16 +1,9 @@
-import { optionalString, requireNonEmptyString } from '../utils/validation.js';
+import { optionalString, requireNonEmptyString } from "../utils/validation.js";
 
 export default class Node {
-  constructor({
-    id,
-    name,
-    type,
-    inputs = [],
-    outputs = [],
-    config = null,
-  }) {
-    this.id = requireNonEmptyString(id, 'Node.id');
-    this.type = requireNonEmptyString(type, 'Node.type');
+  constructor({ id, name, type, inputs = [], outputs = [], config = null }) {
+    this.id = requireNonEmptyString(id, "Node.id");
+    this.type = requireNonEmptyString(type, "Node.type");
     this.name = optionalString(name);
     this.inputs = inputs ?? [];
     this.outputs = outputs ?? [];
@@ -22,7 +15,9 @@ export default class Node {
   }
 
   getRequiredInputs() {
-    return this.inputs.filter((port) => port.required !== false).map((port) => port.name);
+    return this.inputs
+      .filter((port) => port.required !== false)
+      .map((port) => port.name);
   }
 
   getOutputNames() {

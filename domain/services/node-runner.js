@@ -1,12 +1,12 @@
-import { InvariantViolationError } from '../errors.js';
-import { requireNonEmptyString } from '../utils/validation.js';
+import { InvariantViolationError } from "../errors.js";
+import { requireNonEmptyString } from "../utils/validation.js";
 
 function normalizeHandlerMap(handlers) {
   if (!handlers) return [];
   if (handlers instanceof Map) {
     return [...handlers.entries()];
   }
-  if (typeof handlers === 'object') {
+  if (typeof handlers === "object") {
     return Object.entries(handlers);
   }
   return [];
@@ -22,9 +22,14 @@ export default class NodeRunner {
   }
 
   registerHandler(type, handler) {
-    const normalizedType = requireNonEmptyString(type, 'NodeRunner.handlerType');
-    if (typeof handler !== 'function') {
-      throw new InvariantViolationError(`Handler for node type "${normalizedType}" must be a function`);
+    const normalizedType = requireNonEmptyString(
+      type,
+      "NodeRunner.handlerType",
+    );
+    if (typeof handler !== "function") {
+      throw new InvariantViolationError(
+        `Handler for node type "${normalizedType}" must be a function`,
+      );
     }
     this.handlers.set(normalizedType, handler);
   }
@@ -39,7 +44,9 @@ export default class NodeRunner {
     const normalizedStep = NodeRunner.#normalizeStep(step);
     const handler = this.handlers.get(normalizedStep.type);
     if (!handler) {
-      throw new InvariantViolationError(`No handler registered for node type "${normalizedStep.type}"`);
+      throw new InvariantViolationError(
+        `No handler registered for node type "${normalizedStep.type}"`,
+      );
     }
     const payload = { ...runtime, step: normalizedStep };
     const result = await handler(payload);
@@ -47,26 +54,35 @@ export default class NodeRunner {
   }
 
   static #normalizeStep(step) {
-    if (!step || typeof step !== 'object') {
-      throw new InvariantViolationError('step is required for NodeRunner.execute');
+    if (!step || typeof step !== "object") {
+      throw new InvariantViolationError(
+        "step is required for NodeRunner.execute",
+      );
     }
-    requireNonEmptyString(step.type, 'Workflow step type');
+    requireNonEmptyString(step.type, "Workflow step type");
     if (step.id !== undefined && step.id !== null) {
-      requireNonEmptyString(step.id, 'Workflow step id');
+      requireNonEmptyString(step.id, "Workflow step id");
     }
     return step;
   }
 
   static #interpretResult(result) {
     if (!result) {
-      return { requestedNextId: undefined, outputs: null, rawResult: result ?? null };
+      return {
+        requestedNextId: undefined,
+        outputs: null,
+        rawResult: result ?? null,
+      };
     }
-    if (typeof result === 'object') {
-      const requestedNextId = typeof result.nextStepId === 'string' ? result.nextStepId : undefined;
-      const outputs = Object.prototype.hasOwnProperty.call(result, 'outputs') ? result.outputs : null;
+    if (typeof result === "object") {
+      const requestedNextId =
+        typeof result.nextStepId === "string" ? result.nextStepId : undefined;
+      const outputs = Object.prototype.hasOwnProperty.call(result, "outputs")
+        ? result.outputs
+        : null;
       return { requestedNextId, outputs, rawResult: result };
     }
-    if (typeof result === 'string') {
+    if (typeof result === "string") {
       return { requestedNextId: result, outputs: null, rawResult: result };
     }
     return { requestedNextId: undefined, outputs: result, rawResult: result };

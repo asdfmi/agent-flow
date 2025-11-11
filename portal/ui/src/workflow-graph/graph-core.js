@@ -37,9 +37,14 @@ export default class GraphCore extends EventTarget {
   updateViewportSize(size = {}) {
     const width = Number(size.width);
     const height = Number(size.height);
-    const nextWidth = Number.isFinite(width) && width > 0 ? width : this.viewportSize.width;
-    const nextHeight = Number.isFinite(height) && height > 0 ? height : this.viewportSize.height;
-    if (nextWidth === this.viewportSize.width && nextHeight === this.viewportSize.height) {
+    const nextWidth =
+      Number.isFinite(width) && width > 0 ? width : this.viewportSize.width;
+    const nextHeight =
+      Number.isFinite(height) && height > 0 ? height : this.viewportSize.height;
+    if (
+      nextWidth === this.viewportSize.width &&
+      nextHeight === this.viewportSize.height
+    ) {
       return;
     }
     this.viewportSize = { width: nextWidth, height: nextHeight };
@@ -74,7 +79,11 @@ export default class GraphCore extends EventTarget {
     if (!nextWorkflow) return this.state;
     const { preserveSelection = false, force = false } = options;
     const last = this.lastSync;
-    if (!force && last.id === nextWorkflow.id && last.updatedAt === nextWorkflow.updatedAt) {
+    if (
+      !force &&
+      last.id === nextWorkflow.id &&
+      last.updatedAt === nextWorkflow.updatedAt
+    ) {
       return this.state;
     }
 
@@ -86,7 +95,10 @@ export default class GraphCore extends EventTarget {
       ? nextWorkflow.edges.map(toEditableEdge)
       : [];
 
-    this.lastSync = { id: nextWorkflow.id ?? null, updatedAt: nextWorkflow.updatedAt ?? null };
+    this.lastSync = {
+      id: nextWorkflow.id ?? null,
+      updatedAt: nextWorkflow.updatedAt ?? null,
+    };
     const startNodeId = nextWorkflow.startNodeId ?? nodes[0]?.nodeKey ?? "";
     this.state = {
       title: nextWorkflow.title ?? "",
@@ -165,7 +177,10 @@ export default class GraphCore extends EventTarget {
     const edges = prev.edges.filter(
       (edge) => edge.sourceKey !== nodeKey && edge.targetKey !== nodeKey,
     );
-    const startNodeId = nodeKey === prev.startNodeId ? nodes[0]?.nodeKey ?? "" : prev.startNodeId;
+    const startNodeId =
+      nodeKey === prev.startNodeId
+        ? (nodes[0]?.nodeKey ?? "")
+        : prev.startNodeId;
     if (nodes.length === 0) {
       this.selectedIndex = -1;
     } else if (this.selectedIndex > index) {
@@ -181,7 +196,8 @@ export default class GraphCore extends EventTarget {
 
   selectNode(index) {
     const nextIndex = typeof index === "number" ? index : -1;
-    const clamped = nextIndex >= 0 && nextIndex < this.state.nodes.length ? nextIndex : -1;
+    const clamped =
+      nextIndex >= 0 && nextIndex < this.state.nodes.length ? nextIndex : -1;
     if (clamped === this.selectedIndex) {
       return this.state;
     }
@@ -195,7 +211,9 @@ export default class GraphCore extends EventTarget {
       this.selectNode(-1);
       return;
     }
-    const index = this.state.nodes.findIndex((node) => node.nodeKey === nodeKey);
+    const index = this.state.nodes.findIndex(
+      (node) => node.nodeKey === nodeKey,
+    );
     this.selectNode(index);
   }
 
@@ -246,23 +264,27 @@ export default class GraphCore extends EventTarget {
     const prev = this.state;
     const existing = prev.edges.filter((edge) => edge.sourceKey === nodeKey);
     const nextNodeEdgesRaw = builder(existing, prev) || [];
-    const nextNodeEdges = nextNodeEdgesRaw
-      .filter(Boolean)
-      .map((edge) => ({
-        edgeKey: String(edge.edgeKey || "").trim(),
-        sourceKey: nodeKey,
-        targetKey: String(
-          typeof edge.targetKey === "string"
-            ? edge.targetKey
-            : typeof edge.target === "string"
-              ? edge.target
-              : "",
-        ).trim(),
-        label: edge.label ?? "",
-        condition: edge.condition && typeof edge.condition === "object" ? edge.condition : null,
-        metadata: edge.metadata && typeof edge.metadata === "object" ? edge.metadata : null,
-        priority: typeof edge.priority === "number" ? edge.priority : null,
-      }));
+    const nextNodeEdges = nextNodeEdgesRaw.filter(Boolean).map((edge) => ({
+      edgeKey: String(edge.edgeKey || "").trim(),
+      sourceKey: nodeKey,
+      targetKey: String(
+        typeof edge.targetKey === "string"
+          ? edge.targetKey
+          : typeof edge.target === "string"
+            ? edge.target
+            : "",
+      ).trim(),
+      label: edge.label ?? "",
+      condition:
+        edge.condition && typeof edge.condition === "object"
+          ? edge.condition
+          : null,
+      metadata:
+        edge.metadata && typeof edge.metadata === "object"
+          ? edge.metadata
+          : null,
+      priority: typeof edge.priority === "number" ? edge.priority : null,
+    }));
     const remainder = prev.edges.filter((edge) => edge.sourceKey !== nodeKey);
     this.state = { ...prev, edges: [...remainder, ...nextNodeEdges] };
     this.#commit({ viewChanged: true });
@@ -336,7 +358,10 @@ export default class GraphCore extends EventTarget {
     const column = index % columns;
     const row = Math.floor(index / columns);
     const spacingX = usableWidth / columns;
-    const spacingY = Math.max(180, usableHeight / Math.max(1, Math.floor(usableHeight / 180)));
+    const spacingY = Math.max(
+      180,
+      usableHeight / Math.max(1, Math.floor(usableHeight / 180)),
+    );
     const baseX = leftSafe + spacingX * column + spacingX / 2 - NODE_WIDTH / 2;
     const baseY = topSafe + row * spacingY;
     return {
@@ -351,7 +376,9 @@ export default class GraphCore extends EventTarget {
     }
     const position = this.nodePositions.get(nodeKey);
     if (position) return position;
-    const nextPosition = this.#clampPosition(this.#createDefaultPosition(index));
+    const nextPosition = this.#clampPosition(
+      this.#createDefaultPosition(index),
+    );
     this.nodePositions.set(nodeKey, nextPosition);
     return nextPosition;
   }
@@ -361,8 +388,14 @@ export default class GraphCore extends EventTarget {
     nodes.forEach((node, index) => {
       const key = node?.nodeKey || node?.id;
       if (!key) return;
-      if (typeof node.positionX === "number" && typeof node.positionY === "number") {
-        this.nodePositions.set(key, this.#clampPosition({ x: node.positionX, y: node.positionY }));
+      if (
+        typeof node.positionX === "number" &&
+        typeof node.positionY === "number"
+      ) {
+        this.nodePositions.set(
+          key,
+          this.#clampPosition({ x: node.positionX, y: node.positionY }),
+        );
       } else {
         const fallback = this.#createDefaultPosition(index);
         this.nodePositions.set(key, this.#clampPosition(fallback));
@@ -377,8 +410,10 @@ export default class GraphCore extends EventTarget {
     const updatedNodes = sourceNodes.map((node, index) => {
       const key = node?.nodeKey || node?.id || `node_${index}`;
       const position = this.#getNodePosition(key, index);
-      const currentX = typeof node.positionX === "number" ? node.positionX : null;
-      const currentY = typeof node.positionY === "number" ? node.positionY : null;
+      const currentX =
+        typeof node.positionX === "number" ? node.positionX : null;
+      const currentY =
+        typeof node.positionY === "number" ? node.positionY : null;
       if (currentX === position.x && currentY === position.y) {
         return node;
       }
@@ -409,7 +444,10 @@ export default class GraphCore extends EventTarget {
       version: this.version,
       form: this.state,
       selectedIndex: this.selectedIndex,
-      selectedNode: this.selectedIndex >= 0 ? this.state.nodes[this.selectedIndex] ?? null : null,
+      selectedNode:
+        this.selectedIndex >= 0
+          ? (this.state.nodes[this.selectedIndex] ?? null)
+          : null,
     };
   }
 
@@ -436,7 +474,11 @@ export default class GraphCore extends EventTarget {
   #commit({ viewChanged = false } = {}) {
     this.version += 1;
     this.snapshot = this.#buildSnapshot();
-    this.dispatchEvent(new CustomEvent(GRAPH_CHANGED_EVENT, { detail: { version: this.version } }));
+    this.dispatchEvent(
+      new CustomEvent(GRAPH_CHANGED_EVENT, {
+        detail: { version: this.version },
+      }),
+    );
     if (viewChanged) {
       this.#emitViewChanged();
     } else {
@@ -447,6 +489,10 @@ export default class GraphCore extends EventTarget {
 
   #emitViewChanged() {
     this.viewCache = null;
-    this.dispatchEvent(new CustomEvent(GRAPH_VIEW_CHANGED_EVENT, { detail: { version: this.version } }));
+    this.dispatchEvent(
+      new CustomEvent(GRAPH_VIEW_CHANGED_EVENT, {
+        detail: { version: this.version },
+      }),
+    );
   }
 }

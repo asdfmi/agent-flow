@@ -1,5 +1,10 @@
-const RAW_BASE_URL = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_BASE_URL) || "";
-const BASE_URL = typeof RAW_BASE_URL === "string" ? RAW_BASE_URL.replace(/\/$/, "") : "";
+const RAW_BASE_URL =
+  (typeof import.meta !== "undefined" &&
+    import.meta.env &&
+    import.meta.env.VITE_API_BASE_URL) ||
+  "";
+const BASE_URL =
+  typeof RAW_BASE_URL === "string" ? RAW_BASE_URL.replace(/\/$/, "") : "";
 
 class HttpError extends Error {
   constructor(message, { status, data } = {}) {
@@ -17,7 +22,11 @@ function resolveUrl(path) {
 }
 
 function getAuthToken() {
-  const token = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_TOKEN) || "";
+  const token =
+    (typeof import.meta !== "undefined" &&
+      import.meta.env &&
+      import.meta.env.VITE_API_TOKEN) ||
+    "";
   return token || "";
 }
 
@@ -90,11 +99,16 @@ export async function request(path, options = {}) {
 export function createApiClient(defaults = {}) {
   return {
     request: (path, options) => request(path, { ...defaults, ...options }),
-    get: (path, options) => request(path, { ...defaults, ...options, method: "GET" }),
-    post: (path, options) => request(path, { ...defaults, ...options, method: "POST" }),
-    put: (path, options) => request(path, { ...defaults, ...options, method: "PUT" }),
-    patch: (path, options) => request(path, { ...defaults, ...options, method: "PATCH" }),
-    delete: (path, options) => request(path, { ...defaults, ...options, method: "DELETE" }),
+    get: (path, options) =>
+      request(path, { ...defaults, ...options, method: "GET" }),
+    post: (path, options) =>
+      request(path, { ...defaults, ...options, method: "POST" }),
+    put: (path, options) =>
+      request(path, { ...defaults, ...options, method: "PUT" }),
+    patch: (path, options) =>
+      request(path, { ...defaults, ...options, method: "PATCH" }),
+    delete: (path, options) =>
+      request(path, { ...defaults, ...options, method: "DELETE" }),
   };
 }
 

@@ -10,6 +10,7 @@
   ],
   "scripts": {
     "lint": "eslint .",
+    "format": "prettier --write .",
     "dev:portal": "pnpm --dir portal run dev:api",
     "dev:portal:ui": "pnpm --dir portal run dev:ui",
     "dev:runner": "pnpm --dir runner run dev:runner",
@@ -18,10 +19,11 @@
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "prettier": "^3.4.2",
     "concurrently": "^9.1.0",
     "tsx": "^4.19.1"
   },

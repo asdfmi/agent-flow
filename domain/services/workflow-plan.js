@@ -1,16 +1,20 @@
-import { InvariantViolationError } from '../errors.js';
+import { InvariantViolationError } from "../errors.js";
 
 const MAX_PRIORITY = Number.MAX_SAFE_INTEGER;
 
 export default class WorkflowPlan {
   constructor({ workflow, preferredStartNodeId = null } = {}) {
     if (!workflow) {
-      throw new InvariantViolationError('workflow is required to build execution plan');
+      throw new InvariantViolationError(
+        "workflow is required to build execution plan",
+      );
     }
     this.workflow = workflow;
     this.nodes = workflow.getNodes();
     if (this.nodes.length === 0) {
-      throw new InvariantViolationError('workflow must have at least one node to build plan');
+      throw new InvariantViolationError(
+        "workflow must have at least one node to build plan",
+      );
     }
     this.stepEntries = this.nodes.map((node, index) => ({
       id: node.id,
@@ -32,7 +36,9 @@ export default class WorkflowPlan {
   getStep(stepId) {
     const entry = this.stepById.get(stepId);
     if (!entry) {
-      throw new InvariantViolationError(`Node ${stepId} not found in workflow ${this.workflow.id}`);
+      throw new InvariantViolationError(
+        `Node ${stepId} not found in workflow ${this.workflow.id}`,
+      );
     }
     return entry.step;
   }
@@ -40,7 +46,9 @@ export default class WorkflowPlan {
   getStepEntry(stepId) {
     const entry = this.stepById.get(stepId);
     if (!entry) {
-      throw new InvariantViolationError(`Node ${stepId} not found in workflow ${this.workflow.id}`);
+      throw new InvariantViolationError(
+        `Node ${stepId} not found in workflow ${this.workflow.id}`,
+      );
     }
     return entry;
   }
@@ -63,9 +71,11 @@ export default class WorkflowPlan {
         from: edge.from,
         to: edge.to,
         condition: edge.condition ?? null,
-        priority: typeof edge.priority === 'number' ? edge.priority : null,
+        priority: typeof edge.priority === "number" ? edge.priority : null,
       }))
-      .sort((a, b) => (a.priority ?? MAX_PRIORITY) - (b.priority ?? MAX_PRIORITY));
+      .sort(
+        (a, b) => (a.priority ?? MAX_PRIORITY) - (b.priority ?? MAX_PRIORITY),
+      );
   }
 
   getFirstEdgeTarget(stepId) {

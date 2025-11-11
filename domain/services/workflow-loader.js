@@ -1,37 +1,43 @@
-import { normalizeWorkflowStructure } from '../utils/workflow-structure.js';
+import { normalizeWorkflowStructure } from "../utils/workflow-structure.js";
 
 const toArray = (value) => (Array.isArray(value) ? value : []);
 
 const pickString = (...values) => {
   for (const value of values) {
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       const trimmed = value.trim();
       if (trimmed) {
         return trimmed;
       }
     }
   }
-  return '';
+  return "";
 };
 
 export function loadWorkflowDefinition(input = {}) {
-  if (!input || typeof input !== 'object') {
-    throw new Error('workflow payload is required');
+  if (!input || typeof input !== "object") {
+    throw new Error("workflow payload is required");
   }
 
-  const base = input.definition && typeof input.definition === 'object'
-    ? input.definition
-    : input;
+  const base =
+    input.definition && typeof input.definition === "object"
+      ? input.definition
+      : input;
 
-  const workflowId = pickString(input.workflowId, input.id, base.workflowId, base.id);
+  const workflowId = pickString(
+    input.workflowId,
+    input.id,
+    base.workflowId,
+    base.id,
+  );
   if (!workflowId) {
-    throw new Error('workflow id is required');
+    throw new Error("workflow id is required");
   }
 
-  const name = pickString(input.name, base.name, 'Untitled Workflow');
+  const name = pickString(input.name, base.name, "Untitled Workflow");
   const nodes = toArray(base.nodes);
   if (nodes.length === 0) {
-    throw new Error('workflow must include nodes');
+    throw new Error("workflow must include nodes");
   }
 
   const edges = toArray(base.edges);
@@ -52,11 +58,12 @@ export function loadWorkflowDefinition(input = {}) {
     base.start,
   );
 
-  const startNode = (startCandidate && normalized.workflow.getNode(startCandidate))
-    ? startCandidate
-    : normalized.workflow.getStartNodes()[0]?.id
-      ?? normalized.nodes[0]?.id
-      ?? null;
+  const startNode =
+    startCandidate && normalized.workflow.getNode(startCandidate)
+      ? startCandidate
+      : (normalized.workflow.getStartNodes()[0]?.id ??
+        normalized.nodes[0]?.id ??
+        null);
 
   return {
     workflow: normalized.workflow,
@@ -64,7 +71,8 @@ export function loadWorkflowDefinition(input = {}) {
     metadata: {
       id: workflowId,
       name,
-      description: typeof base.description === 'string' ? base.description : null,
+      description:
+        typeof base.description === "string" ? base.description : null,
     },
   };
 }

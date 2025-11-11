@@ -1,18 +1,19 @@
-import {
-  WorkflowFactory,
-  WorkflowExecutionService,
-} from '@agent-flow/domain';
+import { WorkflowFactory, WorkflowExecutionService } from "@agent-flow/domain";
 import {
   PrismaWorkflowRepository,
   PrismaWorkflowExecutionRepository,
-} from './infrastructure/prisma/index.js';
+} from "./infrastructure/prisma/index.js";
 
 export function buildContainer() {
   const workflowRepository = new PrismaWorkflowRepository();
   const workflowExecutionRepository = new PrismaWorkflowExecutionRepository();
 
-  const workflowFactory = new WorkflowFactory({ workflowRepo: workflowRepository });
-  const workflowExecutionService = new WorkflowExecutionService({ executionRepo: workflowExecutionRepository });
+  const workflowFactory = new WorkflowFactory({
+    workflowRepo: workflowRepository,
+  });
+  const workflowExecutionService = new WorkflowExecutionService({
+    executionRepo: workflowExecutionRepository,
+  });
 
   return {
     workflowRepository,

@@ -1,16 +1,16 @@
-import { WebSocketServer } from 'ws';
+import { WebSocketServer } from "ws";
 
-export function createWsRunEventHub({ path = '/ws' } = {}) {
+export function createWsRunEventHub({ path = "/ws" } = {}) {
   const subscriptions = new Map(); // runId -> Set<socket>
   const socketKeys = new WeakMap(); // socket -> Set<runId>
   let wss = null;
 
   function attach(server) {
     wss = new WebSocketServer({ server, path });
-    wss.on('connection', (socket) => {
-      socket.on('message', (data) => handleMessage(socket, data));
-      socket.on('close', () => cleanup(socket));
-      socket.on('error', () => cleanup(socket));
+    wss.on("connection", (socket) => {
+      socket.on("message", (data) => handleMessage(socket, data));
+      socket.on("close", () => cleanup(socket));
+      socket.on("error", () => cleanup(socket));
     });
   }
 
@@ -21,11 +21,11 @@ export function createWsRunEventHub({ path = '/ws' } = {}) {
     } catch {
       return;
     }
-    const runId = typeof message?.runId === 'string' ? message.runId : '';
+    const runId = typeof message?.runId === "string" ? message.runId : "";
     if (!runId) return;
-    if (message.type === 'subscribe') {
+    if (message.type === "subscribe") {
       subscribe(socket, runId);
-    } else if (message.type === 'unsubscribe') {
+    } else if (message.type === "unsubscribe") {
       unsubscribe(socket, runId);
     }
   }

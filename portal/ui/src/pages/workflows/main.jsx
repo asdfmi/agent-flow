@@ -10,6 +10,6 @@ if (container) {
     <StrictMode>
       <CssBaseline />
       <WorkflowsApp />
-    </StrictMode>
+    </StrictMode>,
   );
 }

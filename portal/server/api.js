@@ -1,6 +1,6 @@
-import express from 'express';
-import createWorkflowRouter from './routes/workflow-routes.js';
-import createInternalRunRoutes from './routes/internal-run-routes.js';
+import express from "express";
+import createWorkflowRouter from "./routes/workflow-routes.js";
+import createInternalRunRoutes from "./routes/internal-run-routes.js";
 
 export function registerApi(
   app,
@@ -8,22 +8,22 @@ export function registerApi(
     workflowFactory,
     workflowExecutionService,
     runEventHub,
-    internalSecret = '',
+    internalSecret = "",
   } = {},
 ) {
   if (!workflowFactory || !workflowExecutionService) {
-    throw new Error('workflow services are required to register API routes');
+    throw new Error("workflow services are required to register API routes");
   }
-  app.use(express.json({ limit: '1mb' }));
+  app.use(express.json({ limit: "1mb" }));
   app.use(
-    '/api',
+    "/api",
     createWorkflowRouter({
       workflowFactory,
       workflowExecutionService,
     }),
   );
   app.use(
-    '/internal',
+    "/internal",
     createInternalRunRoutes({
       runEventHub,
       internalSecret,
