@@ -1,10 +1,10 @@
 import PropTypes from "prop-types";
 import {
   Alert,
-  Box,
   Chip,
   CircularProgress,
   IconButton,
+  Paper,
   Stack,
   Typography,
 } from "@mui/material";
@@ -28,20 +28,13 @@ function statusColor(status) {
 
 export default function WorkflowRunHistory({ runs, loading, error, onRefresh }) {
   return (
-    <Box sx={{ px: { xs: 2, md: 4 }, mt: { xs: 2, md: 3 } }}>
-      <Stack
-        direction={{ xs: "column", md: "row" }}
-        spacing={2}
-        justifyContent="space-between"
-        alignItems={{ xs: "flex-start", md: "center" }}
-        sx={{ mb: 2 }}
-      >
+    <Stack spacing={2}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center">
         <Typography variant="subtitle1">Recent runs</Typography>
         <IconButton size="small" onClick={onRefresh}>
           <RefreshIcon fontSize="small" />
         </IconButton>
       </Stack>
-
       {loading ? (
         <Stack direction="row" spacing={1} alignItems="center">
           <CircularProgress size={16} />
@@ -52,72 +45,41 @@ export default function WorkflowRunHistory({ runs, loading, error, onRefresh }) 
       ) : error ? (
         <Alert severity="error">{error}</Alert>
       ) : runs.length === 0 ? (
-        <Stack
-          direction="row"
-          spacing={1}
-          alignItems="center"
-          sx={{
-            px: 2,
-            py: 1.5,
-            borderRadius: 2,
-            bgcolor: "background.paper",
-            boxShadow: 1,
-          }}
-        >
+        <Paper variant="outlined" sx={{ p: 2 }}>
           <Typography variant="body2" color="text.secondary">
             No runs recorded yet.
           </Typography>
-        </Stack>
+        </Paper>
       ) : (
         <Stack spacing={1.5}>
           {runs.map((run) => (
-            <Stack
-              key={run.id}
-              direction={{ xs: "column", md: "row" }}
-              spacing={1}
-              justifyContent="space-between"
-              alignItems={{ xs: "flex-start", md: "center" }}
-              sx={{
-                px: 2,
-                py: 1.5,
-                borderRadius: 2,
-                bgcolor: "background.paper",
-                boxShadow: 1,
-              }}
-            >
-              <Stack spacing={0.5}>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Typography variant="subtitle2" noWrap>
-                    {run.runKey || `Run #${run.id}`}
+            <Paper key={run.id} variant="outlined" sx={{ p: 2 }}>
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }}>
+                <Stack spacing={0.5}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography variant="subtitle2" noWrap>
+                      {run.runKey || `Run #${run.id}`}
+                    </Typography>
+                    <Chip size="small" label={run.status} color={statusColor(run.status)} sx={{ textTransform: "uppercase" }} />
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary">
+                    Started: {run.startedAt ? new Date(run.startedAt).toLocaleString() : "-"}
                   </Typography>
-                  <Chip
-                    size="small"
-                    label={run.status}
-                    color={statusColor(run.status)}
-                    sx={{ textTransform: "uppercase" }}
-                  />
+                  <Typography variant="caption" color="text.secondary">
+                    Finished: {run.finishedAt ? new Date(run.finishedAt).toLocaleString() : "—"}
+                  </Typography>
                 </Stack>
-                <Typography variant="caption" color="text.secondary">
-                  Started: {run.startedAt ? new Date(run.startedAt).toLocaleString() : "-"}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Finished: {run.finishedAt ? new Date(run.finishedAt).toLocaleString() : "—"}
-                </Typography>
+                {run.errorMessage ? (
+                  <Typography variant="caption" color="error" sx={{ maxWidth: 360 }}>
+                    {run.errorMessage}
+                  </Typography>
+                ) : null}
               </Stack>
-              {run.errorMessage ? (
-                <Typography
-                  variant="caption"
-                  color="error"
-                  sx={{ maxWidth: 360 }}
-                >
-                  {run.errorMessage}
-                </Typography>
-              ) : null}
-            </Stack>
+            </Paper>
           ))}
         </Stack>
       )}
-    </Box>
+    </Stack>
   );
 }
 

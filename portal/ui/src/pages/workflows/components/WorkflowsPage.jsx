@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
+  Button,
   CircularProgress,
   Container,
   Paper,
   Stack,
   Typography,
-  Divider,
-  Button,
 } from "@mui/material";
 import { HttpError } from "../../../api/client.js";
 import { listWorkflows } from "../../../api/workflows.js";
@@ -48,10 +47,10 @@ export default function WorkflowsPage() {
 
   if (state.loading) {
     return (
-      <Container maxWidth="md" sx={{ py: 6 }}>
-        <Stack alignItems="center" spacing={2}>
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Stack spacing={2}>
           <CircularProgress size={24} />
-          <Typography variant="body2" color="text.secondary">
+          <Typography>
             Loading...
           </Typography>
         </Stack>
@@ -61,55 +60,42 @@ export default function WorkflowsPage() {
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
-      <Paper sx={{ p: 3 }}>
-        <Stack spacing={2}>
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={2}
-            justifyContent="space-between"
-            alignItems={{ xs: "flex-start", sm: "center" }}
-          >
-            <Stack spacing={0.5}>
-              <Typography variant="h5">Workflows</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Select a workflow to view details and run the automation.
-              </Typography>
-            </Stack>
-            <Button
-              variant="contained"
-              onClick={handleCreate}
-              sx={{ alignSelf: { xs: "stretch", sm: "center" } }}
-            >
-              Create workflow
-            </Button>
-          </Stack>
-          {state.error ? <Alert severity="error">{state.error}</Alert> : null}
-          <Divider />
-          {state.data.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              No workflows have been registered yet.
-            </Typography>
-          ) : (
-            <Stack spacing={2}>
-              {state.data.map((workflow) => (
-                <Paper
-                  key={workflow.id}
-                  variant="outlined"
-                  sx={{ p: 2, cursor: "pointer", "&:hover": { boxShadow: 4 } }}
-                  onClick={() => {
-                    const target = String(workflow.id);
-                    window.location.href = `/workflow/${encodeURIComponent(target)}`;
-                  }}
-                >
+      <Stack spacing={3}>
+        <Stack spacing={0.5}>
+          <Typography>Workflows</Typography>
+          <Typography>
+            Select a workflow to view details and run the automation.
+          </Typography>
+          <Button variant="contained" onClick={handleCreate} sx={{ alignSelf: "flex-start", mt: 1 }}>
+            Create workflow
+          </Button>
+        </Stack>
+        {state.error ? <Alert severity="error">{state.error}</Alert> : null}
+        {state.data.length === 0 ? (
+          <Typography>
+            No workflows have been registered yet.
+          </Typography>
+        ) : (
+          <Stack spacing={2}>
+            {state.data.map((workflow) => (
+              <Paper
+                key={workflow.id}
+                variant="outlined"
+                onClick={() => {
+                  const target = String(workflow.id);
+                  window.location.href = `/workflow/${encodeURIComponent(target)}`;
+                }}
+              >
+                <Box padding={2}>
                   <Stack spacing={1}>
-                    <Typography variant="h6">{workflow.title || workflow.id}</Typography>
+                    <Typography>{workflow.title || workflow.id}</Typography>
                     {workflow.description ? (
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography>
                         {workflow.description}
                       </Typography>
                     ) : null}
                     <Stack direction="row" spacing={1} alignItems="center">
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography>
                         Updated: {workflow.updatedAt}
                       </Typography>
                       <Button
@@ -125,12 +111,12 @@ export default function WorkflowsPage() {
                       </Button>
                     </Stack>
                   </Stack>
-                </Paper>
-              ))}
-            </Stack>
-          )}
-        </Stack>
-      </Paper>
+                </Box>
+              </Paper>
+            ))}
+          </Stack>
+        )}
+      </Stack>
     </Container>
   );
 }

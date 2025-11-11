@@ -28,6 +28,8 @@ model WorkflowNode {
   config     Json?
   inputs     Json?
   outputs    Json?
+  positionX  Float?
+  positionY  Float?
   createdAt  DateTime @default(now())
 
   workflow Workflow        @relation(fields: [workflowId], references: [id], onDelete: Cascade)

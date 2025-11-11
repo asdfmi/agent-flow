@@ -40,6 +40,8 @@ export default class PrismaWorkflowRepository extends WorkflowRepositoryContract
             config: node.config ?? null,
             inputs: node.inputs ?? [],
             outputs: node.outputs ?? [],
+            positionX: typeof node.positionX === 'number' ? node.positionX : null,
+            positionY: typeof node.positionY === 'number' ? node.positionY : null,
           })),
         });
       }

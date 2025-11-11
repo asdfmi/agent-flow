@@ -5,7 +5,7 @@ const links = [{ key: "workflows", label: "Workflows", href: "/" }];
 
 export default function NavBar({ current } = {}) {
   return (
-    <AppBar position="static" color="default" elevation={1} sx={{ mb: 2 }}>
+    <AppBar position="static" color="primary" enableColorOnDark>
       <Toolbar>
         <Typography variant="h6" sx={{ flexGrow: 1 }}>
           agent-flow
@@ -16,7 +16,7 @@ export default function NavBar({ current } = {}) {
               key={link.key}
               component="a"
               href={link.href}
-              color="primary"
+              color={current === link.key ? "primary" : "inherit"}
               variant={current === link.key ? "contained" : "text"}
             >
               {link.label}

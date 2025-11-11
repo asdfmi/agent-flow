@@ -15,7 +15,8 @@
     "react-dom": "^19.2.0",
     "prop-types": "^15.8.1",
     "dotenv": "^16.4.5",
-    "ws": "^8.18.3"
+    "ws": "^8.18.3",
+    "pixi.js": "^6.5.10"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.0",

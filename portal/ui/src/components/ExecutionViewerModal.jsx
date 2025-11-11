@@ -1,7 +1,6 @@
 import PropTypes from "prop-types";
 import { useMemo } from "react";
 import { Box, Chip, Dialog, DialogContent, DialogTitle, Paper, Stack, Typography } from "@mui/material";
-import { alpha } from "@mui/material/styles";
 import { getNodeMeta } from "./nodeMeta.js";
 
 const FALLBACK_TEXT = "Waiting for screenshot...";
@@ -35,21 +34,16 @@ export default function ExecutionViewerModal({
           gap: 2,
         }}
       >
-        <Stack
-          direction="row"
-          spacing={2}
-          sx={{ flex: 1, minHeight: 0 }}
-        >
-          <Box
+        <Stack direction="row" spacing={2} sx={{ flex: 1, minHeight: 0 }}>
+          <Paper
+            variant="outlined"
             sx={{
-              flex: 1.5,
-              bgcolor: "grey.100",
-              borderRadius: 1,
+              flex: 3,
+              minHeight: 220,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               overflow: "hidden",
-              minHeight: 220,
             }}
           >
             {screenshot ? (
@@ -112,25 +106,13 @@ export default function ExecutionViewerModal({
           {(nodes ?? []).map((node, index) => {
             const isActive = typeof currentStepIndex === "number" && currentStepIndex === index;
             const meta = getNodeMeta(node.type);
-            const chipColor = isActive
-              ? meta.color === "default"
-                ? "primary"
-                : meta.color
-              : meta.color === "default"
-                ? "default"
-                : meta.color;
+            const chipColor = meta.color === "default" ? undefined : meta.color;
             return (
               <Chip
                 key={node.id ?? index}
                 label={`Node ${index + 1}: ${node.label || meta.label}`}
-                color={chipColor === "default" ? undefined : chipColor}
+                color={chipColor}
                 variant={isActive ? "filled" : "outlined"}
-                sx={{
-                  bgcolor: (theme) =>
-                    !isActive && chipColor !== "default"
-                      ? alpha(theme.palette[chipColor].main, 0.08)
-                      : undefined,
-                }}
               />
             );
           })}

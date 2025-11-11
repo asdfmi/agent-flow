@@ -100,6 +100,7 @@ function convertBuilderNodes(nodesInput = []) {
     if (!candidate) {
       throw new ValidationError(`Node ${index + 1}: node key is required`);
     }
+    const { positionX, positionY } = normalizePosition(node);
     return {
       id: candidate,
       nodeKey: candidate,
@@ -108,6 +109,8 @@ function convertBuilderNodes(nodesInput = []) {
       inputs: Array.isArray(node?.inputs) ? node.inputs : [],
       outputs: Array.isArray(node?.outputs) ? node.outputs : [],
       config: node?.config ?? null,
+      positionX,
+      positionY,
     };
   });
 }
@@ -131,6 +134,30 @@ function convertBuilderEdges(edgesInput = []) {
       priority: typeof edge?.priority === 'number' ? edge.priority : index,
     };
   });
+}
+
+function normalizePosition(node) {
+  const px = toFiniteNumber(
+    node?.positionX
+      ?? node?.position?.x
+      ?? node?.position?.left
+      ?? node?.x
+      ?? node?.left,
+  );
+  const py = toFiniteNumber(
+    node?.positionY
+      ?? node?.position?.y
+      ?? node?.position?.top
+      ?? node?.y
+      ?? node?.top,
+  );
+  return { positionX: px, positionY: py };
+}
+
+function toFiniteNumber(value) {
+  if (value === null || value === undefined) return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
 }
 
 function formatWorkflowSummary(row) {
@@ -160,6 +187,7 @@ function formatWorkflowDetail(view) {
 
 function toBuilderNode(node, index) {
   const key = String(node?.nodeKey || node?.id || `node_${index + 1}`).trim();
+  const { positionX, positionY } = normalizePosition(node);
   return {
     nodeKey: key,
     label: (typeof node?.label === 'string' && node.label.trim())
@@ -169,6 +197,8 @@ function toBuilderNode(node, index) {
         : key,
     type: node?.type || 'navigate',
     config: node?.config ?? {},
+    positionX,
+    positionY,
   };
 }
 

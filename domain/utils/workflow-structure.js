@@ -7,6 +7,12 @@ import NodeFactory from '../factories/node-factory.js';
 
 const toArray = (value) => (Array.isArray(value) ? value : (value ? [value] : []));
 
+const toFiniteNumber = (value) => {
+  if (value === null || value === undefined) return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+};
+
 function normalizePorts(ports, fallbackRequired) {
   return toArray(ports).map((port, index) => {
     if (typeof port === 'string') {
@@ -100,6 +106,20 @@ export function normalizeWorkflowStructure({
     const labelled = typeof nodeInput.name === 'string' && nodeInput.name.trim()
       ? nodeInput.name.trim()
       : id;
+    const positionX = toFiniteNumber(
+      nodeInput.positionX
+        ?? nodeInput.position?.x
+        ?? nodeInput.position?.left
+        ?? nodeInput.x
+        ?? nodeInput.left,
+    );
+    const positionY = toFiniteNumber(
+      nodeInput.positionY
+        ?? nodeInput.position?.y
+        ?? nodeInput.position?.top
+        ?? nodeInput.y
+        ?? nodeInput.top,
+    );
     return {
       id,
       nodeKey: providedKey ?? id,
@@ -112,6 +132,8 @@ export function normalizeWorkflowStructure({
       inputs: normalizePorts(nodeInput.inputs ?? [], true),
       outputs: normalizePorts(nodeInput.outputs ?? [], false),
       config: nodeInput.config ?? null,
+      positionX,
+      positionY,
     };
   });
 

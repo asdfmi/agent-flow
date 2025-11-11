@@ -121,7 +121,6 @@ export default function WorkflowNodeList({
             alignItems: "flex-start",
             flexDirection: "column",
             gap: 0.5,
-            borderRadius: 1,
             mb: 0.5,
           }}
         >
@@ -196,40 +195,19 @@ export default function WorkflowNodeList({
   const danglingNodes = nodes.filter((node) => node.nodeKey && !renderedKeys.has(node.nodeKey));
 
   return (
-    <Box
-      sx={{
-        width: { xs: "100%", md: 320 },
-        flexShrink: 0,
-        borderRight: { xs: "none", md: 1 },
-        borderColor: { md: "divider" },
-        pb: 3,
-      }}
-    >
-      <Box
-        sx={{
-          position: "sticky",
-          top: 0,
-          zIndex: 1,
-          bgcolor: "background.paper",
-          borderBottom: 1,
-          borderColor: "divider",
-          px: 2,
-          py: 1.5,
-        }}
-      >
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Typography variant="subtitle1">Workflow tree</Typography>
-          <Button
-            size="small"
-            startIcon={<AddIcon fontSize="small" />}
-            onClick={onAddNode}
-            variant="contained"
-          >
-            New
-          </Button>
-        </Stack>
-      </Box>
-
+    <Box sx={{ width: { xs: "100%", md: 320 }, flexShrink: 0 }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ pb: 1 }}>
+        <Typography variant="subtitle1">Workflow tree</Typography>
+        <Button
+          size="small"
+          startIcon={<AddIcon fontSize="small" />}
+          onClick={onAddNode}
+          variant="contained"
+        >
+          New
+        </Button>
+      </Stack>
+      <Divider />
       <List sx={{ px: 1, pt: 1, pb: 0 }}>
         <ListItem disablePadding>
           <ListItemButton onClick={() => setWorkflowOpen((prev) => !prev)}>

@@ -24,10 +24,14 @@ export function createEmptyNode(existingNodes) {
     label: "",
     type: "navigate",
     config: getDefaultConfig("navigate"),
+    positionX: null,
+    positionY: null,
   };
 }
 
 export function toEditableNode(node) {
+  const positionX = parseNumber(node?.positionX ?? node?.position?.x);
+  const positionY = parseNumber(node?.positionY ?? node?.position?.y);
   return {
     nodeKey: node.nodeKey ?? "",
     label: node.label ?? "",
@@ -35,6 +39,8 @@ export function toEditableNode(node) {
     config: node.config && typeof node.config === "object"
       ? node.config
       : getDefaultConfig(node.type ?? "navigate"),
+    positionX,
+    positionY,
   };
 }
 
@@ -152,11 +158,16 @@ export function buildPayload(form) {
     const configErrors = validateConfig(type, config, label);
     errors.push(...configErrors);
 
+    const positionX = parseNumber(node.positionX ?? node.position?.x);
+    const positionY = parseNumber(node.positionY ?? node.position?.y);
+
     nodes.push({
       nodeKey,
       type,
       label: String(node.label || "").trim() || null,
       ...(config ? { config } : {}),
+      ...(Number.isFinite(positionX) ? { positionX } : {}),
+      ...(Number.isFinite(positionY) ? { positionY } : {}),
     });
   });
 
