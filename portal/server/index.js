@@ -15,7 +15,6 @@ const runnerClient = new RunnerClient();
 
 registerApi(app, {
   workflowFactory: container.workflowFactory,
-  workflowExecutionService: container.workflowExecutionService,
   runEventHub,
   internalSecret: process.env.INTERNAL_SECRET || "",
   runnerClient,

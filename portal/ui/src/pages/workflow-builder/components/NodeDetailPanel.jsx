@@ -246,16 +246,10 @@ export default function NodeDetailPanel({
   };
 
   return (
-    <Stack>
-      <Stack>
-        <Typography>Node details</Typography>
-        <Typography>Use the Save button to persist your changes.</Typography>
-        {saving ? <Typography>Saving…</Typography> : null}
-      </Stack>
-
+    <Stack spacing={2.5}>
       {error ? <Alert severity="error">{error}</Alert> : null}
 
-      <Stack>
+      <Stack spacing={2}>
         <TextField label="Node key" value={node.nodeKey ?? ""} disabled />
         <TextField
           select
@@ -276,7 +270,7 @@ export default function NodeDetailPanel({
         />
 
         {isIfNode ? (
-          <Stack>
+          <Stack spacing={1.5}>
             <Typography>Branches</Typography>
             <Typography>
               Branches are evaluated from top to bottom. The first matching
@@ -288,8 +282,21 @@ export default function NodeDetailPanel({
               </Typography>
             ) : (
               ifBranches.map((branch, index) => (
-                <Stack key={branch.edgeKey || index}>
-                  <Stack>
+                <Stack
+                  key={branch.edgeKey || index}
+                  spacing={1}
+                  sx={{
+                    p: 1.5,
+                    borderRadius: 1.5,
+                    border: "1px solid rgba(0,0,0,0.12)",
+                    backgroundColor: "rgba(0,0,0,0.02)",
+                  }}
+                >
+                  <Stack
+                    direction="row"
+                    alignItems="center"
+                    justifyContent="space-between"
+                  >
                     <Typography>Branch {index + 1}</Typography>
                     <Button onClick={() => handleRemoveIfBranch(index)}>
                       Remove
@@ -319,7 +326,7 @@ export default function NodeDetailPanel({
             />
           </Stack>
         ) : (
-          <Stack>
+          <Stack spacing={1}>
             <Typography>Next node</Typography>
             <TextField
               label="Target node key"
@@ -331,7 +338,7 @@ export default function NodeDetailPanel({
           </Stack>
         )}
 
-        <Stack>
+        <Stack spacing={1}>
           <Typography>Configuration</Typography>
           <NodeConfigFields
             type={node.type}
@@ -341,7 +348,7 @@ export default function NodeDetailPanel({
         </Stack>
       </Stack>
 
-      <Stack>
+      <Stack spacing={1}>
         <Button onClick={onDelete} disabled={!canDelete || saving}>
           Delete
         </Button>

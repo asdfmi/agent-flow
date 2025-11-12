@@ -6,21 +6,16 @@ export function registerApi(
   app,
   {
     workflowFactory,
-    workflowExecutionService,
     runEventHub,
     internalSecret = "",
     runnerClient = null,
   } = {},
 ) {
-  if (!workflowFactory || !workflowExecutionService) {
-    throw new Error("workflow services are required to register API routes");
-  }
   app.use(express.json({ limit: "1mb" }));
   app.use(
     "/api",
     createWorkflowRouter({
       workflowFactory,
-      workflowExecutionService,
       runnerClient,
     }),
   );

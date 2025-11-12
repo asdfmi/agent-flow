@@ -2,9 +2,8 @@ import { ValidationError } from "@agent-flow/domain/errors.js";
 import { randomUUID } from "node:crypto";
 
 export default class WorkflowController {
-  constructor({ workflowFactory, workflowExecutionService, runnerClient }) {
+  constructor({ workflowFactory, runnerClient }) {
     this.workflowFactory = workflowFactory;
-    this.workflowExecutionService = workflowExecutionService;
     this.runnerClient = runnerClient;
 
     this.listWorkflows = this.listWorkflows.bind(this);
@@ -73,11 +72,7 @@ export default class WorkflowController {
       });
       return;
     }
-    const runs = await this.workflowExecutionService.listExecutions();
-    const filtered = runs
-      .filter((run) => run.workflowId === workflowId)
-      .map(formatRunSummary);
-    res.json({ data: filtered });
+    res.json({ data: [] });
   }
 
   async runWorkflow(req, res) {
@@ -286,17 +281,6 @@ function toBuilderEdge(edge, index) {
     condition: edge?.condition ?? null,
     metadata: edge?.metadata ?? null,
     priority: typeof edge?.priority === "number" ? edge.priority : null,
-  };
-}
-
-function formatRunSummary(run) {
-  return {
-    id: run.id,
-    runKey: run.id,
-    status: (run.status || "").toLowerCase(),
-    startedAt: toISO(run.startedAt),
-    finishedAt: toISO(run.completedAt ?? run.updatedAt),
-    errorMessage: run.result?.error ?? null,
   };
 }
 

@@ -1,5 +1,4 @@
-const DEFAULT_BASE_URL =
-  process.env.RUNNER_BASE_URL || "http://localhost:4000";
+const DEFAULT_BASE_URL = process.env.RUNNER_BASE_URL || "http://localhost:4000";
 
 function normalizeBaseUrl(value) {
   if (!value) return DEFAULT_BASE_URL;

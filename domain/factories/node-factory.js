@@ -100,15 +100,10 @@ export default class NodeFactory {
       return config ?? null;
     }
     if (type === NODE_TYPES.CLICK && config.options) {
-      const options =
-        config.options && typeof config.options === "object"
-          ? config.options
-          : null;
-      if (options) {
-        const { options: _ignored, ...rest } = config;
+      const { options, ...rest } = config;
+      if (options && typeof options === "object") {
         return { ...rest, ...options };
       }
-      const { options: _unused, ...rest } = config;
       return rest;
     }
     if (type === NODE_TYPES.WAIT) {

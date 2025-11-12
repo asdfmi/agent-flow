@@ -26,7 +26,6 @@ export { buildExecutionView } from "./services/execution-view.js";
 export { default as RunManager } from "./services/run-manager.js";
 export { default as RunWorkflowUseCase } from "./services/run-workflow-use-case.js";
 export { default as WorkflowFactory } from "./factories/workflow-factory.js";
-export { default as WorkflowExecutionService } from "./services/workflow-execution-service.js";
 export { default as WorkflowFeedbackService } from "./services/workflow-feedback-service.js";
 export { loadWorkflowDefinition } from "./services/workflow-loader.js";
 export * from "./errors.js";

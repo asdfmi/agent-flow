@@ -48,7 +48,8 @@ function normalizeNodeConfigShape(type, config) {
       const { options, ...rest } = config;
       return { ...rest, ...options };
     }
-    const { options: _unused, ...rest } = config;
+    const { options, ...rest } = config;
+    void options;
     return rest;
   }
   if (type === "wait") {

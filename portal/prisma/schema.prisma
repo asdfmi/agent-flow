@@ -17,7 +17,6 @@ model Workflow {
   nodes        WorkflowNode[]
   edges        WorkflowEdge[]
   dataBindings WorkflowDataBinding[]
-  executions   WorkflowExecution[]
 }
 
 model WorkflowNode {
@@ -70,48 +69,4 @@ model WorkflowDataBinding {
   targetNode  WorkflowNode @relation("binding_target", fields: [targetNodeId], references: [id], onDelete: Cascade)
 
   @@index([workflowId])
-}
-
-model WorkflowExecution {
-  id             String       @id @default(uuid())
-  workflowId     String
-  status         String
-  result         Json?
-  startedAt      DateTime?
-  completedAt    DateTime?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-
-  workflow   Workflow        @relation(fields: [workflowId], references: [id])
-  nodes      NodeExecution[]
-  metrics    ExecutionMetric[]
-}
-
-model NodeExecution {
-  id                  String   @id @default(uuid())
-  workflowExecutionId String
-  nodeId              String
-  status              String
-  outputs             Json?
-  error               String?
-  startedAt           DateTime?
-  completedAt         DateTime?
-
-  workflowExecution WorkflowExecution @relation(fields: [workflowExecutionId], references: [id], onDelete: Cascade)
-
-  @@unique([workflowExecutionId, nodeId])
-}
-
-model ExecutionMetric {
-  id                  String   @id @default(uuid())
-  workflowExecutionId String
-  key                 String
-  type                String
-  unit                String?
-  value               Json
-  timestamp           DateTime @default(now())
-
-  workflowExecution WorkflowExecution @relation(fields: [workflowExecutionId], references: [id], onDelete: Cascade)
-
-  @@unique([workflowExecutionId, key, timestamp])
 }

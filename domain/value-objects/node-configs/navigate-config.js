@@ -9,7 +9,11 @@ export default class NavigateConfig {
       config.waitUntil,
       "navigate config.waitUntil",
     );
-    assertInSet(waitUntil, NAVIGATE_WAIT_STATE_SET, "navigate config.waitUntil");
+    assertInSet(
+      waitUntil,
+      NAVIGATE_WAIT_STATE_SET,
+      "navigate config.waitUntil",
+    );
     this.waitUntil = waitUntil;
     Object.freeze(this);
   }
