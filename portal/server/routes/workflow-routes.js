@@ -5,10 +5,12 @@ import { asyncHandler } from "../utils/http.js";
 export default function createWorkflowRouter({
   workflowFactory,
   workflowExecutionService,
+  runnerClient = null,
 }) {
   const controller = new WorkflowController({
     workflowFactory,
     workflowExecutionService,
+    runnerClient,
   });
   const router = express.Router();
 

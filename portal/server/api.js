@@ -9,6 +9,7 @@ export function registerApi(
     workflowExecutionService,
     runEventHub,
     internalSecret = "",
+    runnerClient = null,
   } = {},
 ) {
   if (!workflowFactory || !workflowExecutionService) {
@@ -20,6 +21,7 @@ export function registerApi(
     createWorkflowRouter({
       workflowFactory,
       workflowExecutionService,
+      runnerClient,
     }),
   );
   app.use(

@@ -2,9 +2,10 @@ import { ValidationError } from "@agent-flow/domain/errors.js";
 import { randomUUID } from "node:crypto";
 
 export default class WorkflowController {
-  constructor({ workflowFactory, workflowExecutionService }) {
+  constructor({ workflowFactory, workflowExecutionService, runnerClient }) {
     this.workflowFactory = workflowFactory;
     this.workflowExecutionService = workflowExecutionService;
+    this.runnerClient = runnerClient;
 
     this.listWorkflows = this.listWorkflows.bind(this);
     this.createWorkflow = this.createWorkflow.bind(this);
@@ -79,11 +80,40 @@ export default class WorkflowController {
     res.json({ data: filtered });
   }
 
-  async runWorkflow(_req, res) {
-    res.status(501).json({
-      error: "not_implemented",
-      message: "Runner integration is not available yet.",
+  async runWorkflow(req, res) {
+    if (!this.runnerClient) {
+      res.status(503).json({
+        error: "runner_unavailable",
+        message: "Runner integration is not configured",
+      });
+      return;
+    }
+    const workflowId = sanitizeWorkflowId(req.params.workflowId);
+    if (!workflowId) {
+      res.status(400).json({
+        error: "invalid_workflow",
+        message: "workflow id is required",
+      });
+      return;
+    }
+    const startNodeId = sanitizeWorkflowId(req.body?.startNodeId);
+    const runId = randomUUID();
+    const publication =
+      await this.workflowFactory.publishWorkflowDefinition(workflowId);
+    const workflowPayload = {
+      id: publication.definition.id,
+      name: publication.definition.name,
+      description: publication.definition.description,
+      nodes: publication.definition.nodes,
+      edges: publication.definition.edges,
+      dataBindings: publication.definition.dataBindings,
+    };
+    await this.runnerClient.triggerRun({
+      runId,
+      workflow: workflowPayload,
+      startNodeId,
     });
+    res.status(202).json({ runId });
   }
 }
 

@@ -4,18 +4,21 @@ import { registerApi } from "./api.js";
 import { registerStatic } from "./static.js";
 import { buildContainer } from "./container.js";
 import { createWsRunEventHub } from "./infrastructure/ws/run-event-hub.js";
+import RunnerClient from "./infrastructure/runner/runner-client.js";
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
 
 const container = buildContainer();
 const runEventHub = createWsRunEventHub();
+const runnerClient = new RunnerClient();
 
 registerApi(app, {
   workflowFactory: container.workflowFactory,
   workflowExecutionService: container.workflowExecutionService,
   runEventHub,
   internalSecret: process.env.INTERNAL_SECRET || "",
+  runnerClient,
 });
 registerStatic(app);
 
