@@ -66,3 +66,24 @@ export function requireDefined(value, label) {
   }
   return value;
 }
+
+export function requirePositiveInteger(value, label) {
+  if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) {
+    throw new ValidationError(`${label} must be an integer greater than 0`);
+  }
+  return value;
+}
+
+export function requireNonNegativeNumber(value, label) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    throw new ValidationError(`${label} must be a non-negative number`);
+  }
+  return value;
+}
+
+export function requirePositiveNumber(value, label) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    throw new ValidationError(`${label} must be greater than 0`);
+  }
+  return value;
+}

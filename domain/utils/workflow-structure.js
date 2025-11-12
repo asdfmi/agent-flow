@@ -39,6 +39,84 @@ function normalizePorts(ports, fallbackRequired) {
   });
 }
 
+function normalizeNodeConfigShape(type, config) {
+  if (!config || typeof config !== "object") {
+    return config ?? null;
+  }
+  if (type === "click") {
+    if (config.options && typeof config.options === "object") {
+      const { options, ...rest } = config;
+      return { ...rest, ...options };
+    }
+    const { options: _unused, ...rest } = config;
+    return rest;
+  }
+  if (type === "wait") {
+    const timeout =
+      typeof config.timeout === "number"
+        ? config.timeout
+        : typeof config.seconds === "number"
+          ? config.seconds
+          : null;
+    if (timeout !== null) {
+      return { timeout };
+    }
+  }
+  return config;
+}
+
+function normalizeWaitNodeType(type, config) {
+  if (type !== "wait" || !config || typeof config !== "object") {
+    return { type, config };
+  }
+  const strategy =
+    typeof config.strategy === "string" ? config.strategy.toLowerCase() : null;
+  if (strategy !== "element_state") {
+    const timeout =
+      typeof config.timeout === "number"
+        ? config.timeout
+        : typeof config.seconds === "number"
+          ? config.seconds
+          : null;
+    return {
+      type,
+      config: timeout !== null ? { timeout } : config,
+    };
+  }
+  const conditionType =
+    typeof config.conditionType === "string"
+      ? config.conditionType
+      : typeof config.condition?.type === "string"
+        ? config.condition.type
+        : "visible";
+  const xpath =
+    typeof config.xpath === "string" && config.xpath
+      ? config.xpath
+      : typeof config.condition?.xpath === "string"
+        ? config.condition.xpath
+        : typeof config.selector === "string"
+          ? config.selector
+          : "";
+  const conditionTimeoutSeconds =
+    typeof config.conditionTimeoutSeconds === "number"
+      ? config.conditionTimeoutSeconds
+      : typeof config.condition?.timeoutSeconds === "number"
+        ? config.condition.timeoutSeconds
+        : typeof config.conditionTimeout === "number"
+          ? config.conditionTimeout
+          : typeof config.timeout === "number"
+            ? config.timeout
+            : 10;
+  return {
+    type: "wait_element",
+    config: {
+      type: conditionType,
+      xpath,
+      timeout: conditionTimeoutSeconds,
+    },
+  };
+}
+
 function pickNodeRef(edgeInput, index, key, map) {
   const candidates = [
     edgeInput?.[key],
@@ -135,18 +213,28 @@ export function normalizeWorkflowStructure({
         nodeInput.y ??
         nodeInput.top,
     );
+    const normalizedTypeInput =
+      typeof nodeInput.type === "string" && nodeInput.type.trim()
+        ? nodeInput.type.trim()
+        : "task";
+    const waitAdjusted = normalizeWaitNodeType(
+      normalizedTypeInput,
+      nodeInput.config ?? null,
+    );
+    const normalizedType = waitAdjusted.type;
+    const normalizedConfig = normalizeNodeConfigShape(
+      normalizedType,
+      waitAdjusted.config ?? null,
+    );
     return {
       id,
       nodeKey: providedKey ?? id,
       workflowId,
       name: labelled,
-      type:
-        typeof nodeInput.type === "string" && nodeInput.type.trim()
-          ? nodeInput.type.trim()
-          : "task",
+      type: normalizedType,
       inputs: normalizePorts(nodeInput.inputs ?? [], true),
       outputs: normalizePorts(nodeInput.outputs ?? [], false),
-      config: nodeInput.config ?? null,
+      config: normalizedConfig,
       positionX,
       positionY,
     };

@@ -8,4 +8,5 @@ export const NODE_TYPES = Object.freeze({
   SCRIPT: "script",
   EXTRACT_TEXT: "extract_text",
   WAIT: "wait",
+  WAIT_ELEMENT: "wait_element",
 });

@@ -1,12 +1,15 @@
-import { requireNonEmptyString } from "../../utils/validation.js";
+import { assertInSet, requireNonEmptyString } from "../../utils/validation.js";
+import { NAVIGATE_WAIT_STATE_SET } from "./constants.js";
 
 export default class NavigateConfig {
   constructor(rawConfig) {
     const config = rawConfig && typeof rawConfig === "object" ? rawConfig : {};
-    const url = typeof config.url === "string" ? config.url : "";
-    const waitUntil =
-      typeof config.waitUntil === "string" ? config.waitUntil : "";
-    this.url = requireNonEmptyString(url, "navigate config.url");
+    this.url = requireNonEmptyString(config.url, "navigate config.url");
+    const waitUntil = requireNonEmptyString(
+      config.waitUntil,
+      "navigate config.waitUntil",
+    );
+    assertInSet(waitUntil, NAVIGATE_WAIT_STATE_SET, "navigate config.waitUntil");
     this.waitUntil = waitUntil;
     Object.freeze(this);
   }

@@ -8,6 +8,8 @@ import LogConfigFields from "./LogConfigFields.jsx";
 import ScriptConfigFields from "./ScriptConfigFields.jsx";
 import ExtractTextConfigFields from "./ExtractTextConfigFields.jsx";
 import FallbackConfigFields from "./FallbackConfigFields.jsx";
+import WaitConfigFields from "./WaitConfigFields.jsx";
+import WaitElementConfigFields from "./WaitElementConfigFields.jsx";
 import { getDefaultConfig } from "../utils/workflowBuilder.js";
 
 function IfConfigPlaceholder() {
@@ -19,6 +21,8 @@ function IfConfigPlaceholder() {
 const COMPONENT_BY_TYPE = {
   navigate: NavigateConfigFields,
   if: IfConfigPlaceholder,
+  wait: WaitConfigFields,
+  wait_element: WaitElementConfigFields,
   scroll: ScrollConfigFields,
   click: ClickConfigFields,
   fill: FillConfigFields,

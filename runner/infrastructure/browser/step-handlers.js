@@ -1,5 +1,6 @@
 import handleNavigate from "./steps/navigate.js";
 import handleWait from "./steps/wait.js";
+import handleWaitElement from "./steps/wait-element.js";
 import handleScroll from "./steps/scroll.js";
 import handleClick from "./steps/click.js";
 import handleFill from "./steps/fill.js";
@@ -12,6 +13,7 @@ export function createStepHandlerMap(overrides = {}) {
   const defaults = {
     navigate: handleNavigate,
     wait: handleWait,
+    wait_element: handleWaitElement,
     scroll: handleScroll,
     click: handleClick,
     fill: handleFill,

@@ -1,12 +1,16 @@
-import { DEFAULT_SUCCESS_TIMEOUT_SEC } from "../utils.js";
+const PLAYWRIGHT_BUTTON_BY_TYPE = Object.freeze({
+  left: "left",
+  right: "right",
+  middle: "middle",
+});
 
 export default async function handleClick({ automation, step }) {
-  const { xpath = "", options = {} } = step.config ?? {};
+  const { xpath, button, clickCount, delay, timeout } = step.config;
   const locator = automation.page.locator(`xpath=${xpath}`);
   await locator.click({
-    button: options.button || "left",
-    clickCount: options.clickCount,
-    delay: options.delay ? options.delay * 1000 : undefined,
-    timeout: (options.timeout ?? DEFAULT_SUCCESS_TIMEOUT_SEC) * 1000,
+    button: PLAYWRIGHT_BUTTON_BY_TYPE[button],
+    clickCount,
+    delay: delay * 1000,
+    timeout: timeout * 1000,
   });
 }

@@ -1,27 +1,24 @@
 import PropTypes from "prop-types";
-import { TextField, MenuItem, Typography } from "@mui/material";
+import { MenuItem, TextField, Tooltip, Typography } from "@mui/material";
+import { CLICK_BUTTON_OPTIONS } from "@agent-flow/domain/value-objects/node-configs/constants.js";
 import { parseNumber } from "../utils/workflowBuilder.js";
 
 export default function ClickConfigFields({ config, onChange }) {
-  const options =
-    config.options && typeof config.options === "object" ? config.options : {};
+  const buttonValue = config.button ?? "left";
+  const clickCountValue =
+    typeof config.clickCount === "number" ? config.clickCount : 1;
+  const delayValue = typeof config.delay === "number" ? config.delay : 0;
+  const timeoutValue = typeof config.timeout === "number" ? config.timeout : 5;
 
   const setConfig = (updates) => {
     onChange({ ...config, ...updates });
   };
 
-  const updateOptions = (updates) => {
-    const next = { ...options, ...updates };
-    Object.keys(next).forEach((key) => {
-      if (
-        next[key] === null ||
-        next[key] === "" ||
-        typeof next[key] === "undefined"
-      ) {
-        delete next[key];
-      }
+  const handleNumberChange = (field, fallback) => (event) => {
+    const parsed = parseNumber(event.target.value);
+    setConfig({
+      [field]: parsed === null ? fallback : parsed,
     });
-    setConfig({ options: next });
   };
 
   return (
@@ -32,45 +29,55 @@ export default function ClickConfigFields({ config, onChange }) {
         value={config.xpath ?? ""}
         onChange={(event) => setConfig({ xpath: event.target.value })}
       />
-      <TextField
-        select
-        label="Button"
-        value={options.button ?? ""}
-        onChange={(event) =>
-          updateOptions({ button: event.target.value || null })
-        }
-      >
-        <MenuItem value="">
-          <em>Default</em>
-        </MenuItem>
-        <MenuItem value="left">left</MenuItem>
-        <MenuItem value="right">right</MenuItem>
-        <MenuItem value="middle">middle</MenuItem>
-      </TextField>
-      <TextField
-        label="Click count"
-        type="number"
-        value={options.clickCount ?? ""}
-        onChange={(event) =>
-          updateOptions({ clickCount: parseNumber(event.target.value) })
-        }
-      />
-      <TextField
-        label="Delay (ms)"
-        type="number"
-        value={options.delay ?? ""}
-        onChange={(event) =>
-          updateOptions({ delay: parseNumber(event.target.value) })
-        }
-      />
-      <TextField
-        label="Timeout (ms)"
-        type="number"
-        value={options.timeout ?? ""}
-        onChange={(event) =>
-          updateOptions({ timeout: parseNumber(event.target.value) })
-        }
-      />
+      <Tooltip title="Which mouse button to use for this click">
+        <TextField
+          select
+          label="Button"
+          value={buttonValue}
+          onChange={(event) => {
+            const value = event.target.value;
+            setConfig({
+              button: value === "" ? "left" : value,
+            });
+          }}
+        >
+          <MenuItem value="">
+            <em>Default (left)</em>
+          </MenuItem>
+          {CLICK_BUTTON_OPTIONS.map((option) => (
+            <MenuItem key={option} value={option}>
+              {option}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Tooltip>
+      <Tooltip title="How many times to click the element (1 = single, 2 = double, …)">
+        <TextField
+          label="Click count"
+          type="number"
+          value={clickCountValue}
+          onChange={handleNumberChange("clickCount", 1)}
+          slotProps={{ input: { min: 1, step: 1 } }}
+        />
+      </Tooltip>
+      <Tooltip title="Delay between mouse down and up, in seconds">
+        <TextField
+          label="Delay (s)"
+          type="number"
+          value={delayValue}
+          onChange={handleNumberChange("delay", 0)}
+          slotProps={{ input: { min: 0, step: 0.1 } }}
+        />
+      </Tooltip>
+      <Tooltip title="Maximum time to wait for the click action to succeed, in seconds">
+        <TextField
+          label="Timeout (s)"
+          type="number"
+          value={timeoutValue}
+          onChange={handleNumberChange("timeout", 5)}
+          slotProps={{ input: { min: 0.1, step: 0.5 } }}
+        />
+      </Tooltip>
     </>
   );
 }

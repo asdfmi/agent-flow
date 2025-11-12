@@ -1,10 +1,28 @@
-import { requireNonEmptyString } from "../../utils/validation.js";
+import {
+  assertInSet,
+  requireNonEmptyString,
+  requirePositiveInteger,
+  requireNonNegativeNumber,
+  requirePositiveNumber,
+} from "../../utils/validation.js";
+import { CLICK_BUTTON_OPTION_SET } from "./constants.js";
 
 export default class ClickConfig {
   constructor(rawConfig) {
     const config = rawConfig && typeof rawConfig === "object" ? rawConfig : {};
-    const xpath = typeof config.xpath === "string" ? config.xpath : "";
-    this.xpath = requireNonEmptyString(xpath, "click config.xpath");
+    this.xpath = requireNonEmptyString(config.xpath, "click config.xpath");
+    const button = requireNonEmptyString(config.button, "click config.button");
+    assertInSet(button, CLICK_BUTTON_OPTION_SET, "click config.button");
+    this.button = button;
+    this.clickCount = requirePositiveInteger(
+      config.clickCount,
+      "click config.clickCount",
+    );
+    this.delay = requireNonNegativeNumber(config.delay, "click config.delay");
+    this.timeout = requirePositiveNumber(
+      config.timeout,
+      "click config.timeout",
+    );
     Object.freeze(this);
   }
 

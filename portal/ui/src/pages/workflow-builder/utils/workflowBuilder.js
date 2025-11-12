@@ -1,4 +1,8 @@
 import { BRANCH_CONDITION_TYPES, NODE_TYPES } from "../constants.js";
+import {
+  CLICK_BUTTON_OPTIONS,
+  WAIT_ELEMENT_CONDITION_TYPES,
+} from "@agent-flow/domain/value-objects/node-configs/constants.js";
 
 export function getBuilderContext(pathname) {
   const segments = String(pathname || "")
@@ -47,14 +51,17 @@ function generateNodeLabel(existingNodes = []) {
 export function toEditableNode(node) {
   const positionX = parseNumber(node?.positionX ?? node?.position?.x);
   const positionY = parseNumber(node?.positionY ?? node?.position?.y);
+  const type = node.type ?? "navigate";
+  const baseConfig =
+    node.config && typeof node.config === "object"
+      ? node.config
+      : getDefaultConfig(type);
+  const config = applyConfigDefaults(type, baseConfig);
   return {
     nodeKey: node.nodeKey ?? "",
     label: node.label ?? "",
-    type: node.type ?? "navigate",
-    config:
-      node.config && typeof node.config === "object"
-        ? node.config
-        : getDefaultConfig(node.type ?? "navigate"),
+    type,
+    config,
     positionX,
     positionY,
   };
@@ -83,10 +90,20 @@ export function getDefaultConfig(type) {
       return { url: "", waitUntil: "" };
     case "if":
       return {};
+    case "wait":
+      return {
+        timeout: 1,
+      };
+    case "wait_element":
+      return {
+        type: WAIT_ELEMENT_CONDITION_TYPES[0],
+        xpath: "",
+        timeout: 10,
+      };
     case "scroll":
       return { dx: 0, dy: 600 };
     case "click":
-      return { xpath: "", options: { button: "left", clickCount: 1 } };
+      return { xpath: "", button: "left", clickCount: 1, delay: 0, timeout: 5 };
     case "fill":
       return { xpath: "", value: "", clear: false };
     case "press":
@@ -128,6 +145,54 @@ export function createDefaultBranchCondition(type) {
   }
 }
 
+function normalizeWaitElementTypeValue(value) {
+  if (value === "attached") return "exists";
+  return value;
+}
+
+function applyConfigDefaults(type, config) {
+  if (!config || typeof config !== "object") {
+    return getDefaultConfig(type);
+  }
+  if (type === "click") {
+    const defaults = getDefaultConfig("click");
+    return { ...defaults, ...config };
+  }
+  if (type === "wait") {
+    const defaults = getDefaultConfig("wait");
+    const normalized =
+      config && typeof config === "object"
+        ? {
+            ...config,
+            ...(config.timeout === undefined &&
+            typeof config.seconds === "number"
+              ? { timeout: config.seconds }
+              : {}),
+          }
+        : config;
+    return { ...defaults, ...(normalized ?? {}) };
+  }
+  if (type === "wait_element") {
+    const defaults = getDefaultConfig("wait_element");
+    const overrides =
+      config && typeof config === "object"
+        ? {
+            ...config,
+            ...(typeof config.conditionType === "string" &&
+            config.type === undefined
+              ? { type: config.conditionType }
+              : {}),
+            ...(typeof config.conditionTimeoutSeconds === "number" &&
+            config.timeout === undefined
+              ? { timeout: config.conditionTimeoutSeconds }
+              : {}),
+          }
+        : {};
+    return { ...defaults, ...overrides };
+  }
+  return config;
+}
+
 export function getBranchConditionType(condition) {
   if (!condition || typeof condition !== "object")
     return BRANCH_CONDITION_TYPES[0].value;
@@ -144,6 +209,10 @@ export function parseNumber(input) {
     return null;
   const num = Number(input);
   return Number.isFinite(num) ? num : null;
+}
+
+function isPositiveNumber(value) {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
 export function buildPayload(form) {
@@ -346,9 +415,66 @@ function validateConfig(type, config, label) {
   if (type === "navigate") {
     if (!config || !config.url)
       errors.push(`${label}: URL is required for navigate nodes`);
+  } else if (type === "wait") {
+    const timeoutValue =
+      typeof config?.timeout === "number" ? config.timeout : config?.seconds;
+    if (!isPositiveNumber(timeoutValue)) {
+      errors.push(`${label}: Duration must be a number greater than 0 seconds`);
+    }
+  } else if (type === "wait_element") {
+    const typeValue =
+      typeof config?.type === "string"
+        ? normalizeWaitElementTypeValue(config.type)
+        : null;
+    if (!typeValue || !WAIT_ELEMENT_CONDITION_TYPES.includes(typeValue)) {
+      errors.push(
+        `${label}: Element wait requires a valid state (visible or attached)`,
+      );
+    }
+    if (!config || typeof config.xpath !== "string" || !config.xpath.trim()) {
+      errors.push(`${label}: XPath is required for element waits`);
+    }
+    const timeoutValue = config?.timeout;
+    if (!isPositiveNumber(timeoutValue)) {
+      errors.push(`${label}: Condition timeout must be greater than 0 seconds`);
+    }
   } else if (type === "click") {
     if (!config || !config.xpath)
       errors.push(`${label}: XPath is required for click nodes`);
+    if (!config || !config.button)
+      errors.push(`${label}: Button is required for click nodes`);
+    else if (!CLICK_BUTTON_OPTIONS.includes(config.button)) {
+      errors.push(
+        `${label}: Button must be one of ${CLICK_BUTTON_OPTIONS.join(", ")}`,
+      );
+    }
+    if (
+      typeof config?.clickCount !== "number" ||
+      !Number.isInteger(config.clickCount) ||
+      config.clickCount <= 0
+    ) {
+      errors.push(
+        `${label}: Click count must be an integer greater than 0 for click nodes`,
+      );
+    }
+    if (
+      typeof config?.delay !== "number" ||
+      !Number.isFinite(config.delay) ||
+      config.delay < 0
+    ) {
+      errors.push(
+        `${label}: Delay must be a non-negative number for click nodes`,
+      );
+    }
+    if (
+      typeof config?.timeout !== "number" ||
+      !Number.isFinite(config.timeout) ||
+      config.timeout <= 0
+    ) {
+      errors.push(
+        `${label}: Timeout must be a number greater than 0 for click nodes`,
+      );
+    }
   } else if (type === "fill") {
     if (!config || !config.xpath)
       errors.push(`${label}: XPath is required for fill nodes`);
