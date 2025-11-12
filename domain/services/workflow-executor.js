@@ -37,6 +37,11 @@ export default class WorkflowExecutor {
     this.events = null;
     this.cursor = null;
     this.expressionCache = new Map();
+    const bindingSource =
+      typeof workflow?.getDataBindings === "function"
+        ? workflow.getDataBindings()
+        : (workflow?.dataBindings ?? []);
+    this.bindingTargets = WorkflowExecutor.#indexBindings(bindingSource);
   }
 
   async run() {
@@ -84,7 +89,8 @@ export default class WorkflowExecutor {
     let step = this.cursor.getCurrentStep();
     while (step) {
       const outcome = await this.#executeStep(step, { stepId: step.id });
-      const advanceContext = this.#buildAdvanceContext(step, outcome);
+      const executedStep = outcome?.step ?? step;
+      const advanceContext = this.#buildAdvanceContext(executedStep, outcome);
       step = await this.cursor.advance({
         requestedNextId: outcome?.requestedNextId,
         context: advanceContext,
@@ -97,19 +103,20 @@ export default class WorkflowExecutor {
       throw new Error(`invalid step: ${JSON.stringify(step)}`);
     }
     const index = this.execution.nextStepIndex();
+    const stepPayload = this.#attachInputValues(step);
     const enrichedMeta = {
       ...meta,
-      type: step.type,
-      stepId: step.id ?? meta?.stepId,
-      name: step.name ?? null,
+      type: stepPayload.type,
+      stepId: stepPayload.id ?? meta?.stepId,
+      name: stepPayload.name ?? null,
     };
     if (this.events?.stepStart) {
       await this.events.stepStart({ index, meta: enrichedMeta });
     }
-    this.workflowExecution.startNode(step.id);
+    this.workflowExecution.startNode(stepPayload.id);
     try {
       const runResult = await this.nodeRunner.execute({
-        step,
+        step: stepPayload,
         runtime: {
           automation: this.browserSession,
           execution: this.execution,
@@ -120,7 +127,7 @@ export default class WorkflowExecutor {
           logger: this.logger,
         },
       });
-      this.workflowExecution.completeNode(step.id, {
+      this.workflowExecution.completeNode(stepPayload.id, {
         outputs: runResult.outputs ?? null,
       });
       if (this.events?.stepEnd) {
@@ -131,11 +138,12 @@ export default class WorkflowExecutor {
         outputs: runResult.outputs,
         handlerResult: runResult.rawResult,
         meta: enrichedMeta,
+        step: stepPayload,
       };
     } catch (error) {
       const message = String(error?.message || error);
       try {
-        this.workflowExecution.failNode(step.id, { error: message });
+        this.workflowExecution.failNode(stepPayload.id, { error: message });
       } catch (executionError) {
         this.logger.warn?.("Failed to record node failure", executionError);
       }
@@ -151,13 +159,85 @@ export default class WorkflowExecutor {
     }
   }
 
+  #attachInputValues(step) {
+    if (!step || typeof step !== "object") {
+      return step;
+    }
+    const inputValues = this.#buildInputValues(step.id);
+    if (!inputValues) {
+      return step;
+    }
+    return { ...step, inputValues };
+  }
+
+  #buildInputValues(stepId) {
+    if (!stepId) return null;
+    const bindings = this.bindingTargets.get(stepId);
+    if (!bindings || bindings.length === 0) {
+      return null;
+    }
+    const inputs = {};
+    for (const binding of bindings) {
+      const value = this.#resolveBindingValue(binding);
+      WorkflowExecutor.#appendInputValue(inputs, binding.targetInput, value);
+    }
+    return Object.keys(inputs).length > 0 ? inputs : null;
+  }
+
+  #resolveBindingValue(binding) {
+    if (!binding) {
+      return undefined;
+    }
+    const sourceExecution = this.workflowExecution.getNodeExecution(
+      binding.sourceNodeId,
+    );
+    if (!sourceExecution || typeof sourceExecution.outputs === "undefined") {
+      throw new Error(
+        `Binding source "${binding.sourceNodeId}" has no outputs available`,
+      );
+    }
+    const payload = sourceExecution.outputs;
+    if (!binding.sourceOutput) {
+      if (typeof payload === "undefined") {
+        throw new Error(
+          `Binding source "${binding.sourceNodeId}" did not yield a value`,
+        );
+      }
+      return payload;
+    }
+    if (!payload || typeof payload !== "object") {
+      throw new Error(
+        `Binding source "${binding.sourceNodeId}" does not expose named outputs`,
+      );
+    }
+    if (!Object.prototype.hasOwnProperty.call(payload, binding.sourceOutput)) {
+      throw new Error(
+        `Binding source "${binding.sourceNodeId}" missing output "${binding.sourceOutput}"`,
+      );
+    }
+    return payload[binding.sourceOutput];
+  }
+
+  static #appendInputValue(bucket, inputName, value) {
+    const key = inputName;
+    if (!bucket[key]) {
+      bucket[key] = value;
+      return;
+    }
+    if (Array.isArray(bucket[key])) {
+      bucket[key].push(value);
+      return;
+    }
+    bucket[key] = [bucket[key], value];
+  }
+
   #buildAdvanceContext(step, outcome) {
     return {
       step,
+      inputs: step?.inputValues ?? {},
       outputs: outcome?.outputs ?? null,
       handlerResult: outcome?.handlerResult ?? null,
       meta: outcome?.meta ?? null,
-      executionContext: this.execution,
       workflowExecution: this.workflowExecution,
       automation: this.browserSession,
     };
@@ -207,7 +287,7 @@ export default class WorkflowExecutor {
       outputs: context?.outputs ?? null,
       handlerResult: context?.handlerResult ?? null,
       meta: context?.meta ?? null,
-      variables: context?.executionContext?.getVariablesSnapshot?.() ?? {},
+      variables: context?.inputs ?? {},
       execution: context?.workflowExecution ?? null,
       step: context?.step ?? null,
       runId: this.runId,
@@ -230,5 +310,22 @@ export default class WorkflowExecutor {
     );
     this.expressionCache.set(expression, fn);
     return fn;
+  }
+
+  static #indexBindings(bindings = []) {
+    const map = new Map();
+    for (const binding of bindings) {
+      if (
+        !binding ||
+        typeof binding.targetNodeId !== "string" ||
+        !binding.targetNodeId
+      ) {
+        continue;
+      }
+      const existing = map.get(binding.targetNodeId) ?? [];
+      existing.push(binding);
+      map.set(binding.targetNodeId, existing);
+    }
+    return map;
   }
 }

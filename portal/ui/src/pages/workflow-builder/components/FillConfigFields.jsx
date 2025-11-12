@@ -17,11 +17,10 @@ export default function FillConfigFields({ config, onChange }) {
         value={config.xpath ?? ""}
         onChange={(event) => setConfig({ xpath: event.target.value })}
       />
-      <TextField
-        label="Value"
-        value={config.value ?? ""}
-        onChange={(event) => setConfig({ value: event.target.value })}
-      />
+      <Typography color="text.secondary">
+        Value is supplied via data bindings. Connect an upstream node to the
+        `value` input in the bindings panel.
+      </Typography>
       <FormControlLabel
         control={
           <Checkbox

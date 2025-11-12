@@ -1,10 +1,9 @@
-export default async function handleScript({ automation, execution, step }) {
-  const { code = "", as = null } = step.config ?? {};
-  const result = await automation.evaluateOnPage(
-    code,
-    execution.getVariablesSnapshot(),
-  );
-  if (as) {
-    execution.setVar(as, result);
-  }
+export default async function handleScript({ automation, step }) {
+  const { code = "" } = step.config ?? {};
+  const variables =
+    step.inputValues && typeof step.inputValues === "object"
+      ? step.inputValues
+      : {};
+  const result = await automation.evaluateOnPage(code, variables);
+  return { outputs: { result } };
 }

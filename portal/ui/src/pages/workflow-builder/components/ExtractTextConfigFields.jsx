@@ -12,11 +12,10 @@ export default function ExtractTextConfigFields({ config, onChange }) {
         value={config.xpath ?? ""}
         onChange={(event) => setConfig({ xpath: event.target.value })}
       />
-      <TextField
-        label="Store result as variable"
-        value={config.as ?? ""}
-        onChange={(event) => setConfig({ as: event.target.value })}
-      />
+      <Typography color="text.secondary">
+        Extracted text is exposed via the `text` output port and can be wired to
+        other nodes using data bindings.
+      </Typography>
     </>
   );
 }

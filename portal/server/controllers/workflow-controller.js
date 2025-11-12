@@ -234,6 +234,9 @@ function formatWorkflowSummary(row) {
 function formatWorkflowDetail(view) {
   const nodes = Array.isArray(view.nodes) ? view.nodes.map(toBuilderNode) : [];
   const edges = Array.isArray(view.edges) ? view.edges.map(toBuilderEdge) : [];
+  const dataBindings = Array.isArray(view.dataBindings)
+    ? view.dataBindings.map(toBuilderBinding)
+    : [];
   return {
     id: view.id,
     title: view.name ?? "",
@@ -241,6 +244,7 @@ function formatWorkflowDetail(view) {
     startNodeId: view.startNodeId ?? nodes[0]?.nodeKey ?? "",
     nodes,
     edges,
+    dataBindings,
     createdAt: toISO(view.createdAt),
     updatedAt: toISO(view.updatedAt),
   };
@@ -261,6 +265,8 @@ function toBuilderNode(node, index) {
     config: node?.config ?? {},
     positionX,
     positionY,
+    inputs: Array.isArray(node?.inputs) ? node.inputs : [],
+    outputs: Array.isArray(node?.outputs) ? node.outputs : [],
   };
 }
 
@@ -281,6 +287,19 @@ function toBuilderEdge(edge, index) {
     condition: edge?.condition ?? null,
     metadata: edge?.metadata ?? null,
     priority: typeof edge?.priority === "number" ? edge.priority : null,
+  };
+}
+
+function toBuilderBinding(binding, index) {
+  return {
+    bindingKey: String(
+      binding?.bindingKey || binding?.id || `binding_${index + 1}`,
+    ).trim(),
+    sourceKey: String(binding?.sourceKey || binding?.sourceNodeId || "").trim(),
+    sourceOutput: binding?.sourceOutput ?? "",
+    targetKey: String(binding?.targetKey || binding?.targetNodeId || "").trim(),
+    targetInput: binding?.targetInput ?? "",
+    transform: binding?.transform ?? null,
   };
 }
 

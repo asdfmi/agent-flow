@@ -1,5 +1,7 @@
 import {
   createEmptyNode,
+  getDefaultPorts,
+  toEditableBinding,
   toEditableEdge,
   toEditableNode,
 } from "../pages/workflow-builder/utils/workflowBuilder.js";
@@ -12,6 +14,7 @@ const EMPTY_FORM = {
   startNodeId: "",
   nodes: [],
   edges: [],
+  dataBindings: [],
 };
 
 const GRAPH_CHANGED_EVENT = "graph:changed";
@@ -94,6 +97,9 @@ export default class GraphCore extends EventTarget {
     const edges = Array.isArray(nextWorkflow.edges)
       ? nextWorkflow.edges.map(toEditableEdge)
       : [];
+    const dataBindings = Array.isArray(nextWorkflow.dataBindings)
+      ? nextWorkflow.dataBindings.map(toEditableBinding).filter(Boolean)
+      : [];
 
     this.lastSync = {
       id: nextWorkflow.id ?? null,
@@ -106,6 +112,7 @@ export default class GraphCore extends EventTarget {
       startNodeId,
       nodes,
       edges,
+      dataBindings,
     };
     if (nodes.length === 0) {
       this.selectedIndex = -1;
@@ -174,6 +181,10 @@ export default class GraphCore extends EventTarget {
     const edges = prev.edges.filter(
       (edge) => edge.sourceKey !== nodeKey && edge.targetKey !== nodeKey,
     );
+    const dataBindings = prev.dataBindings.filter(
+      (binding) =>
+        binding.sourceKey !== nodeKey && binding.targetKey !== nodeKey,
+    );
     const startNodeId =
       nodeKey === prev.startNodeId
         ? (nodes[0]?.nodeKey ?? "")
@@ -185,7 +196,7 @@ export default class GraphCore extends EventTarget {
     } else if (this.selectedIndex === index) {
       this.selectedIndex = Math.min(index, nodes.length - 1);
     }
-    this.state = { ...prev, nodes, edges, startNodeId };
+    this.state = { ...prev, nodes, edges, dataBindings, startNodeId };
     this.#ensurePositions(nodes);
     this.#commit({ viewChanged: true });
     return this.state;
@@ -220,7 +231,23 @@ export default class GraphCore extends EventTarget {
     }
     const prev = this.state;
     const currentNode = prev.nodes[index];
-    const nextNode = { ...currentNode, ...updates };
+    let nextNode = { ...currentNode, ...updates };
+    let dataBindings = prev.dataBindings;
+    const typeChanged =
+      typeof updates.type === "string" && updates.type !== currentNode.type;
+    if (typeChanged) {
+      const ports = getDefaultPorts(updates.type);
+      nextNode = {
+        ...nextNode,
+        inputs: ports.inputs,
+        outputs: ports.outputs,
+      };
+      dataBindings = dataBindings.filter(
+        (binding) =>
+          binding.sourceKey !== currentNode.nodeKey &&
+          binding.targetKey !== currentNode.nodeKey,
+      );
+    }
     const nodes = prev.nodes.map((node, i) => (i === index ? nextNode : node));
     let startNodeId = prev.startNodeId;
     if (currentNode.nodeKey === prev.startNodeId && nextNode.nodeKey) {
@@ -249,8 +276,22 @@ export default class GraphCore extends EventTarget {
         this.nodePositions.set(nextKey, position);
         this.nodePositions.delete(currentKey);
       }
+      dataBindings = dataBindings.map((binding) => {
+        if (!binding) return binding;
+        let changed = false;
+        const updated = { ...binding };
+        if (binding.sourceKey === currentKey) {
+          updated.sourceKey = nextKey;
+          changed = true;
+        }
+        if (binding.targetKey === currentKey) {
+          updated.targetKey = nextKey;
+          changed = true;
+        }
+        return changed ? updated : binding;
+      });
     }
-    this.state = { ...prev, nodes, edges, startNodeId };
+    this.state = { ...prev, nodes, edges, dataBindings, startNodeId };
     this.#ensurePositions(nodes);
     this.#commit({ viewChanged: true });
     return this.state;
@@ -285,6 +326,50 @@ export default class GraphCore extends EventTarget {
     const remainder = prev.edges.filter((edge) => edge.sourceKey !== nodeKey);
     this.state = { ...prev, edges: [...remainder, ...nextNodeEdges] };
     this.#commit({ viewChanged: true });
+    return this.state;
+  }
+
+  replaceBindingsForNode(nodeKey, builder) {
+    if (!nodeKey) return this.state;
+    const prev = this.state;
+    const existing = prev.dataBindings.filter(
+      (binding) => binding.targetKey === nodeKey,
+    );
+    const nextBindingsRaw = builder(existing, prev) || [];
+    const sanitized = nextBindingsRaw
+      .filter((binding) => binding && binding.targetKey === nodeKey)
+      .map((binding) => {
+        const bindingKey =
+          typeof binding.bindingKey === "string" && binding.bindingKey.trim()
+            ? binding.bindingKey.trim()
+            : globalThis.crypto.randomUUID();
+        return {
+          bindingKey,
+          sourceKey: String(binding.sourceKey || "").trim(),
+          sourceOutput:
+            typeof binding.sourceOutput === "string"
+              ? binding.sourceOutput.trim()
+              : "",
+          targetKey: nodeKey,
+          targetInput:
+            typeof binding.targetInput === "string"
+              ? binding.targetInput.trim()
+              : "",
+          transform:
+            binding.transform && typeof binding.transform === "object"
+              ? binding.transform
+              : null,
+        };
+      })
+      .filter((binding) => binding.sourceKey && binding.targetInput);
+    const remainder = prev.dataBindings.filter(
+      (binding) => binding.targetKey !== nodeKey,
+    );
+    this.state = {
+      ...prev,
+      dataBindings: [...remainder, ...sanitized],
+    };
+    this.#commit();
     return this.state;
   }
 

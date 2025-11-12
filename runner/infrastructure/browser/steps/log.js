@@ -1,18 +1,12 @@
 import { renderTemplate } from "../utils.js";
 
-export default async function handleLog({
-  execution,
-  step,
-  logger,
-  publishEvent,
-  runId,
-}) {
+export default async function handleLog({ step, logger, publishEvent, runId }) {
   const {
     message: template = "",
     target = "agent-flow",
     level = "info",
   } = step.config ?? {};
-  const message = renderTemplate(template, execution);
+  const message = renderTemplate(template, step.inputValues ?? {});
   const entry = {
     type: "log",
     target,

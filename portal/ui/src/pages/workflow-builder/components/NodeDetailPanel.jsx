@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import {
   Alert,
@@ -21,8 +21,11 @@ export default function NodeDetailPanel({
   node,
   edges,
   allEdges,
+  allNodes,
+  bindings,
   onNodeChange,
   onEdgesChange,
+  onBindingsChange,
   onDelete,
   canDelete,
   saving,
@@ -71,6 +74,95 @@ export default function NodeDetailPanel({
     }));
 
   const createBranchKey = useCallback(() => globalThis.crypto.randomUUID(), []);
+  const currentNodeKey = node?.nodeKey ?? "";
+  const bindingByInput = useMemo(() => {
+    const map = new Map();
+    (bindings || []).forEach((binding) => {
+      if (binding?.targetInput) {
+        map.set(binding.targetInput, binding);
+      }
+    });
+    return map;
+  }, [bindings]);
+  const outputsByNode = useMemo(
+    () =>
+      new Map(
+        (allNodes || []).map((candidate) => [
+          candidate.nodeKey,
+          Array.isArray(candidate.outputs) ? candidate.outputs : [],
+        ]),
+      ),
+    [allNodes],
+  );
+  const availableSourceNodes = useMemo(
+    () =>
+      (allNodes || []).filter(
+        (candidate) =>
+          candidate?.nodeKey && candidate.nodeKey !== currentNodeKey,
+      ),
+    [allNodes, currentNodeKey],
+  );
+  const updateBinding = useCallback(
+    (inputName, updates) => {
+      if (!currentNodeKey || typeof onBindingsChange !== "function") {
+        return;
+      }
+      onBindingsChange((existing = []) => {
+        const list = Array.isArray(existing) ? existing : [];
+        const remainder = list.filter(
+          (binding) => binding.targetInput !== inputName,
+        );
+        if (!updates || !updates.sourceKey) {
+          return remainder;
+        }
+        const previous = list.find(
+          (binding) => binding.targetInput === inputName,
+        );
+        const bindingKey =
+          previous?.bindingKey ??
+          (typeof updates.bindingKey === "string" && updates.bindingKey.trim()
+            ? updates.bindingKey.trim()
+            : globalThis.crypto.randomUUID());
+        return [
+          ...remainder,
+          {
+            bindingKey,
+            sourceKey: updates.sourceKey,
+            sourceOutput:
+              typeof updates.sourceOutput === "string"
+                ? updates.sourceOutput
+                : (previous?.sourceOutput ?? ""),
+            targetKey: currentNodeKey,
+            targetInput: inputName,
+            transform: updates.transform ?? previous?.transform ?? null,
+          },
+        ];
+      });
+    },
+    [currentNodeKey, onBindingsChange],
+  );
+  const handleBindingSourceChange = useCallback(
+    (inputName) => (event) => {
+      const nextSource = event.target.value;
+      if (!nextSource) {
+        updateBinding(inputName, null);
+        return;
+      }
+      updateBinding(inputName, { sourceKey: nextSource, sourceOutput: "" });
+    },
+    [updateBinding],
+  );
+  const handleBindingOutputChange = useCallback(
+    (inputName) => (event) => {
+      const existing = bindingByInput.get(inputName);
+      if (!existing) return;
+      updateBinding(inputName, {
+        sourceKey: existing.sourceKey,
+        sourceOutput: event.target.value,
+      });
+    },
+    [bindingByInput, updateBinding],
+  );
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -346,6 +438,65 @@ export default function NodeDetailPanel({
             onChange={(nextConfig) => onNodeChange({ config: nextConfig })}
           />
         </Stack>
+
+        <Stack spacing={1}>
+          <Typography>Data bindings</Typography>
+          {!node.inputs || node.inputs.length === 0 ? (
+            <Typography color="text.secondary">
+              This node does not accept inputs.
+            </Typography>
+          ) : (
+            node.inputs.map((input) => {
+              const binding = bindingByInput.get(input.name);
+              const sourceValue = binding?.sourceKey ?? "";
+              const sourceOutputValue = binding?.sourceOutput ?? "";
+              const outputOptions = outputsByNode.get(sourceValue) ?? [];
+              return (
+                <Stack key={input.name} spacing={1}>
+                  <Typography variant="body2">
+                    {input.name}
+                    {input.required !== false ? " (required)" : ""}
+                  </Typography>
+                  <TextField
+                    select
+                    label="Source node"
+                    value={sourceValue}
+                    onChange={handleBindingSourceChange(input.name)}
+                    helperText={
+                      input.required !== false
+                        ? "This input must be connected"
+                        : "Optional binding"
+                    }
+                  >
+                    <MenuItem value="">Unbound</MenuItem>
+                    {availableSourceNodes.map((candidate) => (
+                      <MenuItem
+                        key={candidate.nodeKey}
+                        value={candidate.nodeKey}
+                      >
+                        {candidate.label || candidate.nodeKey}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField
+                    select
+                    label="Source output"
+                    value={sourceOutputValue}
+                    onChange={handleBindingOutputChange(input.name)}
+                    disabled={!sourceValue}
+                  >
+                    <MenuItem value="">Entire result</MenuItem>
+                    {outputOptions.map((port) => (
+                      <MenuItem key={port.name} value={port.name}>
+                        {port.name}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Stack>
+              );
+            })
+          )}
+        </Stack>
       </Stack>
 
       <Stack spacing={1}>
@@ -364,11 +515,26 @@ NodeDetailPanel.propTypes = {
     description: PropTypes.string,
     type: PropTypes.string.isRequired,
     config: PropTypes.object,
+    inputs: PropTypes.arrayOf(
+      PropTypes.shape({
+        name: PropTypes.string.isRequired,
+        required: PropTypes.bool,
+      }),
+    ),
+    outputs: PropTypes.arrayOf(
+      PropTypes.shape({
+        name: PropTypes.string.isRequired,
+        required: PropTypes.bool,
+      }),
+    ),
   }),
   edges: PropTypes.arrayOf(PropTypes.object),
   allEdges: PropTypes.arrayOf(PropTypes.object),
+  allNodes: PropTypes.arrayOf(PropTypes.object),
+  bindings: PropTypes.arrayOf(PropTypes.object),
   onNodeChange: PropTypes.func.isRequired,
   onEdgesChange: PropTypes.func.isRequired,
+  onBindingsChange: PropTypes.func,
   onDelete: PropTypes.func.isRequired,
   canDelete: PropTypes.bool,
   saving: PropTypes.bool,
@@ -379,6 +545,9 @@ NodeDetailPanel.defaultProps = {
   node: null,
   edges: [],
   allEdges: [],
+  allNodes: [],
+  bindings: [],
+  onBindingsChange: null,
   canDelete: true,
   saving: false,
   error: "",

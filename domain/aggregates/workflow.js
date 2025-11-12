@@ -191,4 +191,8 @@ export default class Workflow {
   getNodes() {
     return [...this.nodes];
   }
+
+  getDataBindings() {
+    return [...this.dataBindings];
+  }
 }

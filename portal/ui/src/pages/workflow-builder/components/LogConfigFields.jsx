@@ -28,6 +28,10 @@ export default function LogConfigFields({ config, onChange }) {
         onChange={(event) => setConfig({ message: event.target.value })}
         multiline
       />
+      <Typography color="text.secondary">
+        Bind data to the <code>value</code> input and reference it inside the
+        message with {"{{variables.value}}"}.
+      </Typography>
     </>
   );
 }

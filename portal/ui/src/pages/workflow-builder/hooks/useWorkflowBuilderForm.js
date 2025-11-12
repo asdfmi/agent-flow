@@ -49,6 +49,10 @@ export function useWorkflowBuilderForm(workflow) {
     (nodeKey, builder) => graphCore.replaceEdgesForNode(nodeKey, builder),
     [graphCore],
   );
+  const replaceBindingsForNode = useCallback(
+    (nodeKey, builder) => graphCore.replaceBindingsForNode(nodeKey, builder),
+    [graphCore],
+  );
 
   return {
     form: snapshot.form,
@@ -61,6 +65,7 @@ export function useWorkflowBuilderForm(workflow) {
     handleSelectNode,
     handleNodeChange,
     replaceEdgesForNode,
+    replaceBindingsForNode,
     syncFromWorkflow,
     graphCore,
   };

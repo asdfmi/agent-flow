@@ -40,6 +40,8 @@ export default class Node {
       name: this.name ?? this.id,
       type: this.type,
       config,
+      inputs: this.inputs.map((port) => ({ ...port })),
+      outputs: this.outputs.map((port) => ({ ...port })),
     };
   }
 }

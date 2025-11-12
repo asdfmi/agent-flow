@@ -7,7 +7,6 @@ export default class ExtractTextConfig {
       config.xpath,
       "extract_text config.xpath",
     );
-    this.as = requireNonEmptyString(config.as, "extract_text config.as");
     Object.freeze(this);
   }
 

@@ -13,11 +13,10 @@ export default function ScriptConfigFields({ config, onChange }) {
         onChange={(event) => setConfig({ code: event.target.value })}
         multiline
       />
-      <TextField
-        label="Store result as variable"
-        value={config.as ?? ""}
-        onChange={(event) => setConfig({ as: event.target.value })}
-      />
+      <Typography color="text.secondary">
+        Provide inputs via data bindings. The script return value is published
+        on the `result` output port.
+      </Typography>
     </>
   );
 }

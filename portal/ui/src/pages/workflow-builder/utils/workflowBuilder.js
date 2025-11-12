@@ -3,6 +3,44 @@ import {
   CLICK_BUTTON_OPTIONS,
   WAIT_ELEMENT_CONDITION_TYPES,
 } from "@agent-flow/domain/value-objects/node-configs/constants.js";
+import { getNodePorts } from "@agent-flow/domain/value-objects/node-configs/node-ports.js";
+
+function clonePortDefinition(port, fallbackRequired) {
+  if (!port || typeof port !== "object") return null;
+  const name =
+    typeof port.name === "string" && port.name.trim() ? port.name.trim() : null;
+  if (!name) return null;
+  return {
+    name,
+    required:
+      port.required === undefined ? fallbackRequired : port.required !== false,
+  };
+}
+
+function clonePortList(ports, fallbackRequired) {
+  if (!Array.isArray(ports) || ports.length === 0) return [];
+  return ports
+    .map((port) => clonePortDefinition(port, fallbackRequired))
+    .filter(Boolean);
+}
+
+export function getDefaultPorts(type) {
+  const template = getNodePorts(type);
+  return {
+    inputs: clonePortList(template.inputs, true),
+    outputs: clonePortList(template.outputs, false),
+  };
+}
+
+export function normalizeNodePorts(type, inputs, outputs) {
+  const defaults = getDefaultPorts(type);
+  const providedInputs = clonePortList(inputs, true);
+  const providedOutputs = clonePortList(outputs, false);
+  return {
+    inputs: providedInputs.length > 0 ? providedInputs : defaults.inputs,
+    outputs: providedOutputs.length > 0 ? providedOutputs : defaults.outputs,
+  };
+}
 
 export function getBuilderContext(pathname) {
   const segments = String(pathname || "")
@@ -23,11 +61,14 @@ export function getBuilderContext(pathname) {
 export function createEmptyNode(existingNodes = []) {
   const nodeKey = globalThis.crypto.randomUUID();
   const label = generateNodeLabel(existingNodes);
+  const ports = getDefaultPorts("navigate");
   return {
     nodeKey,
     label,
     type: "navigate",
     config: getDefaultConfig("navigate"),
+    inputs: ports.inputs,
+    outputs: ports.outputs,
     positionX: null,
     positionY: null,
   };
@@ -57,6 +98,7 @@ export function toEditableNode(node) {
       ? node.config
       : getDefaultConfig(type);
   const config = applyConfigDefaults(type, baseConfig);
+  const ports = normalizeNodePorts(type, node?.inputs, node?.outputs);
   return {
     nodeKey: node.nodeKey ?? "",
     label: node.label ?? "",
@@ -64,6 +106,8 @@ export function toEditableNode(node) {
     config,
     positionX,
     positionY,
+    inputs: ports.inputs,
+    outputs: ports.outputs,
   };
 }
 
@@ -81,6 +125,38 @@ export function toEditableEdge(edge) {
     metadata:
       edge.metadata && typeof edge.metadata === "object" ? edge.metadata : null,
     priority: typeof edge.priority === "number" ? edge.priority : null,
+  };
+}
+
+export function toEditableBinding(binding, index = 0) {
+  if (!binding || typeof binding !== "object") return null;
+  const bindingKey =
+    typeof binding.bindingKey === "string" && binding.bindingKey.trim()
+      ? binding.bindingKey.trim()
+      : typeof binding.id === "string" && binding.id.trim()
+        ? binding.id.trim()
+        : `binding_${index + 1}`;
+  const sourceKey = String(
+    binding.sourceKey ?? binding.sourceNodeId ?? "",
+  ).trim();
+  const targetKey = String(
+    binding.targetKey ?? binding.targetNodeId ?? "",
+  ).trim();
+  const targetInput =
+    typeof binding.targetInput === "string" ? binding.targetInput.trim() : "";
+  return {
+    bindingKey,
+    sourceKey,
+    sourceOutput:
+      typeof binding.sourceOutput === "string"
+        ? binding.sourceOutput.trim()
+        : "",
+    targetKey,
+    targetInput,
+    transform:
+      binding.transform && typeof binding.transform === "object"
+        ? binding.transform
+        : null,
   };
 }
 
@@ -105,15 +181,15 @@ export function getDefaultConfig(type) {
     case "click":
       return { xpath: "", button: "left", clickCount: 1, delay: 0, timeout: 5 };
     case "fill":
-      return { xpath: "", value: "", clear: false };
+      return { xpath: "", clear: false };
     case "press":
       return { xpath: "", key: "", delay: null };
     case "log":
       return { target: "agent-flow", level: "info", message: "" };
     case "script":
-      return { code: "", as: "" };
+      return { code: "" };
     case "extract_text":
-      return { xpath: "", as: "" };
+      return { xpath: "" };
     default:
       return {};
   }
@@ -246,6 +322,7 @@ export function buildPayload(form) {
     }
 
     const config = cleanConfigForType(type, node.config);
+    const ports = normalizeNodePorts(type, node.inputs, node.outputs);
     const configErrors = validateConfig(type, config, label);
     errors.push(...configErrors);
 
@@ -257,6 +334,8 @@ export function buildPayload(form) {
       type,
       label: String(node.label || "").trim() || null,
       ...(config ? { config } : {}),
+      inputs: ports.inputs,
+      outputs: ports.outputs,
       ...(Number.isFinite(positionX) ? { positionX } : {}),
       ...(Number.isFinite(positionY) ? { positionY } : {}),
     });
@@ -335,6 +414,10 @@ export function buildPayload(form) {
     });
   });
 
+  const { bindings: dataBindings, errors: bindingErrors } =
+    normalizeBindingPayload(form.dataBindings ?? [], nodes);
+  errors.push(...bindingErrors);
+
   const nodeKeys = nodes.map((node) => node.nodeKey).filter(Boolean);
   if (hasCycle(nodeKeys, edges)) {
     errors.push("Workflow cannot contain loops or cyclic branches.");
@@ -350,7 +433,133 @@ export function buildPayload(form) {
     startNodeId: startNodeId || null,
     nodes,
     edges,
+    dataBindings,
   };
+}
+
+function generateLocalId(prefix) {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+  return `${prefix}_${Date.now().toString(36)}_${Math.random()
+    .toString(36)
+    .slice(2)}`;
+}
+
+function normalizeBindingPayload(bindingInputs = [], nodes = []) {
+  const errors = [];
+  const bindings = [];
+  const nodesByKey = new Map(nodes.map((node) => [node.nodeKey, node]));
+  const coverageByNode = new Map();
+
+  (bindingInputs || []).forEach((binding, index) => {
+    if (!binding || typeof binding !== "object") {
+      return;
+    }
+    const sourceKey = String(
+      binding.sourceKey ?? binding.sourceNodeId ?? "",
+    ).trim();
+    const targetKey = String(
+      binding.targetKey ?? binding.targetNodeId ?? "",
+    ).trim();
+    const targetInput =
+      typeof binding.targetInput === "string" ? binding.targetInput.trim() : "";
+    if (!sourceKey || !targetKey || !targetInput) {
+      errors.push(
+        `Binding ${index + 1}: source node, target node, and target input are required`,
+      );
+      return;
+    }
+    if (sourceKey === targetKey) {
+      errors.push(
+        `Binding ${index + 1}: source and target cannot reference the same node "${sourceKey}"`,
+      );
+      return;
+    }
+    const sourceNode = nodesByKey.get(sourceKey);
+    const targetNode = nodesByKey.get(targetKey);
+    if (!sourceNode) {
+      errors.push(
+        `Binding ${index + 1}: unknown source node "${sourceKey}" referenced`,
+      );
+      return;
+    }
+    if (!targetNode) {
+      errors.push(
+        `Binding ${index + 1}: unknown target node "${targetKey}" referenced`,
+      );
+      return;
+    }
+    const inputExists = (targetNode.inputs || []).some(
+      (port) => port.name === targetInput,
+    );
+    if (!inputExists) {
+      errors.push(
+        `Binding ${index + 1}: target input "${targetInput}" does not exist on node "${targetKey}"`,
+      );
+      return;
+    }
+    const trimmedSourceOutput =
+      typeof binding.sourceOutput === "string"
+        ? binding.sourceOutput.trim()
+        : "";
+    if (trimmedSourceOutput) {
+      const outputExists = (sourceNode.outputs || []).some(
+        (port) => port.name === trimmedSourceOutput,
+      );
+      if (!outputExists) {
+        errors.push(
+          `Binding ${index + 1}: output "${trimmedSourceOutput}" does not exist on node "${sourceKey}"`,
+        );
+        return;
+      }
+    }
+    const coverage = coverageByNode.get(targetKey) ?? new Set();
+    if (coverage.has(targetInput)) {
+      errors.push(
+        `Node "${targetKey}" already has a binding for input "${targetInput}"`,
+      );
+      return;
+    }
+    coverage.add(targetInput);
+    coverageByNode.set(targetKey, coverage);
+    const bindingId =
+      typeof binding.bindingKey === "string" && binding.bindingKey.trim()
+        ? binding.bindingKey.trim()
+        : typeof binding.id === "string" && binding.id.trim()
+          ? binding.id.trim()
+          : generateLocalId(`binding_${index + 1}`);
+    bindings.push({
+      id: bindingId,
+      sourceNodeId: sourceKey,
+      sourceOutput: trimmedSourceOutput || null,
+      targetNodeId: targetKey,
+      targetInput,
+      transform:
+        binding.transform && typeof binding.transform === "object"
+          ? binding.transform
+          : null,
+    });
+  });
+
+  nodes.forEach((node) => {
+    const requiredInputs = (node.inputs || [])
+      .filter((port) => port.required !== false)
+      .map((port) => port.name);
+    if (requiredInputs.length === 0) {
+      return;
+    }
+    const coverage = coverageByNode.get(node.nodeKey) ?? new Set();
+    requiredInputs.forEach((inputName) => {
+      if (!coverage.has(inputName)) {
+        errors.push(
+          `Node "${node.nodeKey}" requires input "${inputName}" to be bound`,
+        );
+      }
+    });
+  });
+
+  return { bindings, errors };
 }
 
 export function formatApiError(payload) {
@@ -478,8 +687,6 @@ function validateConfig(type, config, label) {
   } else if (type === "fill") {
     if (!config || !config.xpath)
       errors.push(`${label}: XPath is required for fill nodes`);
-    if (!config || (!config.value && config.value !== ""))
-      errors.push(`${label}: Value is required for fill nodes`);
   } else if (type === "press") {
     if (!config || !config.xpath)
       errors.push(`${label}: XPath is required for press nodes`);
@@ -494,8 +701,6 @@ function validateConfig(type, config, label) {
   } else if (type === "extract_text") {
     if (!config || !config.xpath)
       errors.push(`${label}: XPath is required for extract_text nodes`);
-    if (!config || !config.as)
-      errors.push(`${label}: Variable name is required for extract_text nodes`);
   }
   return errors;
 }

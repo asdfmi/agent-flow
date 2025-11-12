@@ -4,6 +4,7 @@ import Edge from "../value-objects/edge.js";
 import DataBinding from "../value-objects/data-binding.js";
 import { ValidationError } from "../errors.js";
 import NodeFactory from "../factories/node-factory.js";
+import { getNodePorts } from "../value-objects/node-configs/node-ports.js";
 
 const toArray = (value) =>
   Array.isArray(value) ? value : value ? [value] : [];
@@ -227,14 +228,24 @@ export function normalizeWorkflowStructure({
       normalizedType,
       waitAdjusted.config ?? null,
     );
+    const { inputs: defaultInputs, outputs: defaultOutputs } =
+      getNodePorts(normalizedType);
+    const rawInputs =
+      Array.isArray(nodeInput.inputs) && nodeInput.inputs.length > 0
+        ? nodeInput.inputs
+        : defaultInputs;
+    const rawOutputs =
+      Array.isArray(nodeInput.outputs) && nodeInput.outputs.length > 0
+        ? nodeInput.outputs
+        : defaultOutputs;
     return {
       id,
       nodeKey: providedKey ?? id,
       workflowId,
       name: labelled,
       type: normalizedType,
-      inputs: normalizePorts(nodeInput.inputs ?? [], true),
-      outputs: normalizePorts(nodeInput.outputs ?? [], false),
+      inputs: normalizePorts(rawInputs, true),
+      outputs: normalizePorts(rawOutputs, false),
       config: normalizedConfig,
       positionX,
       positionY,

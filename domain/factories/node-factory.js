@@ -13,6 +13,7 @@ import WaitElementConfig from "../value-objects/node-configs/wait-element-config
 import WaitConfig from "../value-objects/node-configs/wait-config.js";
 import { NODE_TYPES } from "../value-objects/node-configs/node-types.js";
 import Node from "../entities/node.js";
+import { getNodePorts } from "../value-objects/node-configs/node-ports.js";
 
 const CONFIG_REGISTRY = new Map([
   [NODE_TYPES.NAVIGATE, NavigateConfig],
@@ -67,18 +68,36 @@ export default class NodeFactory {
     if (value instanceof Node) {
       return value;
     }
-    const { id, name, type, inputs, outputs, config } = value;
+    const {
+      id,
+      name,
+      type,
+      inputs: inputDefs,
+      outputs: outputDefs,
+      config,
+    } = value;
     const normalizedType = requireNonEmptyString(type, "Node.type");
     const waitAdjusted = NodeFactory.#adjustWaitNode({
       type: normalizedType,
       config,
     });
+    const { inputs: defaultInputs, outputs: defaultOutputs } = getNodePorts(
+      waitAdjusted.type,
+    );
+    const resolvedInputs =
+      Array.isArray(inputDefs) && inputDefs.length > 0
+        ? inputDefs
+        : defaultInputs;
+    const resolvedOutputs =
+      Array.isArray(outputDefs) && outputDefs.length > 0
+        ? outputDefs
+        : defaultOutputs;
     return new Node({
       id: requireNonEmptyString(id, "Node.id"),
       name: optionalString(name),
       type: waitAdjusted.type,
-      inputs: normalizePorts(inputs, { defaultRequired: true }),
-      outputs: normalizePorts(outputs, { defaultRequired: false }),
+      inputs: normalizePorts(resolvedInputs, { defaultRequired: true }),
+      outputs: normalizePorts(resolvedOutputs, { defaultRequired: false }),
       config: NodeFactory.#createNodeConfig(
         waitAdjusted.type,
         waitAdjusted.config,
